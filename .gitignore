@@ -1,6 +1,10 @@
 # Claude
 CLAUDE.md
 AGENTS.md
+.claude/
+
+# Data files
+*.xlsx
 
 # Next.js
 next-env.d.ts
