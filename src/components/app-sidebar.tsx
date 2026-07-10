@@ -12,6 +12,9 @@ import {
   Settings,
   Orbit,
   LogOut,
+  Moon,
+  Sun,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -28,6 +31,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { useAppStore } from "@/components/store-provider";
+import { useTheme, ThemeKey } from "@/components/theme-provider";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
@@ -48,6 +52,18 @@ const toolsNav = [
   { title: "Exportar Excel", href: "/export", icon: FileSpreadsheet },
   { title: "Configuracoes", href: "/settings", icon: Settings },
 ];
+
+const THEME_CYCLE: ThemeKey[] = ["dark", "light", "vibrant"];
+const THEME_ICONS: Record<ThemeKey, React.ReactNode> = {
+  dark: <Moon className="h-4 w-4" />,
+  light: <Sun className="h-4 w-4" />,
+  vibrant: <Sparkles className="h-4 w-4" />,
+};
+const THEME_LABELS: Record<ThemeKey, string> = {
+  dark: "Dark",
+  light: "Light",
+  vibrant: "Vibrant",
+};
 
 function NavSection({ label, items }: { label: string; items: typeof mainNav }) {
   const pathname = usePathname();
@@ -76,12 +92,19 @@ function NavSection({ label, items }: { label: string; items: typeof mainNav }) 
 
 export function AppSidebar() {
   const { logout } = useAppStore();
+  const { theme, setTheme } = useTheme();
   const router = useRouter();
 
   async function handleLogout() {
     await logout();
     router.push("/login");
     router.refresh();
+  }
+
+  function cycleTheme() {
+    const idx = THEME_CYCLE.indexOf(theme);
+    const next = THEME_CYCLE[(idx + 1) % THEME_CYCLE.length];
+    setTheme(next);
   }
 
   return (
@@ -108,7 +131,26 @@ export function AppSidebar() {
         <NavSection label="Ferramentas" items={toolsNav} />
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-4">
+      <SidebarFooter className="border-t border-sidebar-border p-4 space-y-3">
+        {/* Theme switcher */}
+        <div className="flex rounded-lg border border-border overflow-hidden">
+          {THEME_CYCLE.map((t) => (
+            <button
+              key={t}
+              onClick={() => setTheme(t)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium transition-colors ${
+                theme === t
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`}
+              title={THEME_LABELS[t]}
+            >
+              {THEME_ICONS[t]}
+              <span className="hidden sm:inline">{THEME_LABELS[t]}</span>
+            </button>
+          ))}
+        </div>
+
         <div className="flex items-center justify-between">
           <p className="text-[11px] text-muted-foreground">
             OrbiCore v0.1.0

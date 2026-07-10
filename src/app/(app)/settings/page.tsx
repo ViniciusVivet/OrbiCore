@@ -5,10 +5,35 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Settings, Save, RotateCcw, Orbit, Check } from "lucide-react";
+import { Settings, Save, RotateCcw, Orbit, Check, Moon, Sun, Sparkles, Palette } from "lucide-react";
 import { useAppStore } from "@/components/store-provider";
+import { useTheme, ThemeKey } from "@/components/theme-provider";
 import { toast } from "sonner";
 import { ModuleKey } from "@/lib/types";
+
+const THEMES: { key: ThemeKey; label: string; description: string; icon: React.ReactNode; preview: string[] }[] = [
+  {
+    key: "dark",
+    label: "Dark",
+    description: "Tema escuro original — clean e profissional",
+    icon: <Moon className="h-5 w-5" />,
+    preview: ["oklch(0.13 0.005 260)", "oklch(0.18 0.005 260)", "oklch(0.75 0.15 195)"],
+  },
+  {
+    key: "light",
+    label: "Light",
+    description: "Tema claro — leve e minimalista",
+    icon: <Sun className="h-5 w-5" />,
+    preview: ["oklch(0.98 0.002 260)", "oklch(1 0 0)", "oklch(0.55 0.18 230)"],
+  },
+  {
+    key: "vibrant",
+    label: "Vibrant",
+    description: "Tema neon — cores vibrantes e marcantes",
+    icon: <Sparkles className="h-5 w-5" />,
+    preview: ["oklch(0.1 0.02 280)", "oklch(0.15 0.025 280)", "oklch(0.75 0.25 310)"],
+  },
+];
 
 const ALL_MODULES: { key: ModuleKey; label: string; description: string }[] = [
   { key: "dashboard", label: "Dashboard", description: "Painel principal com metricas e graficos" },
@@ -23,6 +48,7 @@ const ALL_MODULES: { key: ModuleKey; label: string; description: string }[] = [
 
 export default function SettingsPage() {
   const { data, loaded, updateProfile, resetData } = useAppStore();
+  const { theme, setTheme } = useTheme();
   const [name, setName] = useState("");
   const [year, setYear] = useState(2026);
   const [enabledModules, setEnabledModules] = useState<ModuleKey[]>([]);
@@ -87,6 +113,54 @@ export default function SettingsPage() {
             <Save className="h-4 w-4" />
             Salvar
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Palette className="h-5 w-5 text-primary" />
+            Tema
+          </CardTitle>
+          <CardDescription>Escolha a aparencia do seu painel</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {THEMES.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setTheme(t.key)}
+                className={`relative flex flex-col items-center gap-3 rounded-xl border-2 p-4 transition-all ${
+                  theme === t.key
+                    ? "border-primary bg-primary/5 shadow-md shadow-primary/10"
+                    : "border-border/50 hover:border-primary/30"
+                }`}
+              >
+                {theme === t.key && (
+                  <div className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary">
+                    <Check className="h-3 w-3 text-primary-foreground" />
+                  </div>
+                )}
+                {/* Preview */}
+                <div className="flex gap-1.5">
+                  {t.preview.map((color, i) => (
+                    <div
+                      key={i}
+                      className="h-8 w-8 rounded-lg border border-black/10"
+                      style={{ background: color }}
+                    />
+                  ))}
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1.5 mb-0.5">
+                    {t.icon}
+                    <span className="text-sm font-medium">{t.label}</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">{t.description}</p>
+                </div>
+              </button>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
