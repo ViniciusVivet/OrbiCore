@@ -102,7 +102,7 @@ export function AppSidebar() {
         </Link>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent data-tour="sidebar">
         <NavSection label="Principal" items={mainNav} />
         <NavSection label="Operacoes" items={operationsNav} />
         <NavSection label="Ferramentas" items={toolsNav} />

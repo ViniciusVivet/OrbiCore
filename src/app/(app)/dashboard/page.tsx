@@ -125,7 +125,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header + Filters */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between" data-tour="welcome">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
           <p className="text-muted-foreground">
@@ -133,7 +133,7 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2" data-tour="filters">
           {/* Year */}
           <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
             <SelectTrigger className="w-[100px] h-9">
@@ -193,7 +193,7 @@ export default function DashboardPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4" data-tour="kpi-cards">
         <ClickableStatCard
           href="/contracts"
           title="MRR Ativo"
@@ -233,7 +233,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Goal progress bar */}
-      <Card className="border-border/50">
+      <Card className="border-border/50" data-tour="goal-bar">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between mb-3">
             <div>

@@ -65,21 +65,33 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
-      const { error } = await supabase.auth.signUp({
+      const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: { full_name: name.trim() },
         },
       });
-      if (error) {
-        setError(error.message);
+      if (signUpError) {
+        setError(signUpError.message);
       } else {
-        setSuccess("Conta criada com sucesso! Voce ja pode entrar.");
-        setIsLogin(true);
-        setName("");
-        setPassword("");
-        setConfirmPassword("");
+        // Auto-login after signup
+        const { error: loginError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (loginError) {
+          // Fallback: signup worked but auto-login failed (email confirmation required)
+          setSuccess("Conta criada com sucesso! Verifique seu email ou entre com sua senha.");
+          setIsLogin(true);
+          setName("");
+          setPassword("");
+          setConfirmPassword("");
+        } else {
+          router.push("/dashboard");
+          router.refresh();
+          return;
+        }
       }
     }
 
