@@ -6,17 +6,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Orbit, Loader2 } from "lucide-react";
+import { Orbit, Loader2, ArrowLeft, UserPlus, LogIn } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const router = useRouter();
+
+  function switchMode() {
+    setIsLogin(!isLogin);
+    setError("");
+    setSuccess("");
+    setName("");
+    setPassword("");
+    setConfirmPassword("");
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -39,19 +50,36 @@ export default function LoginPage() {
         router.refresh();
       }
     } else {
+      if (!name.trim()) {
+        setError("Informe seu nome");
+        setLoading(false);
+        return;
+      }
       if (password.length < 6) {
         setError("Senha deve ter pelo menos 6 caracteres");
+        setLoading(false);
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError("As senhas nao coincidem");
         setLoading(false);
         return;
       }
       const { error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: { full_name: name.trim() },
+        },
       });
       if (error) {
         setError(error.message);
       } else {
-        setSuccess("Conta criada! Verifique seu email para confirmar.");
+        setSuccess("Conta criada com sucesso! Voce ja pode entrar.");
+        setIsLogin(true);
+        setName("");
+        setPassword("");
+        setConfirmPassword("");
       }
     }
 
@@ -72,75 +100,159 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Card */}
-        <Card className="border-border/50">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg">
-              {isLogin ? "Entrar" : "Criar conta"}
-            </CardTitle>
-            <CardDescription>
-              {isLogin
-                ? "Acesse seu painel de gestao"
-                : "Crie sua conta para comecar"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                />
+        {/* Login */}
+        {isLogin ? (
+          <Card className="border-border/50">
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-2">
+                <LogIn className="h-5 w-5 text-primary" />
+                <CardTitle className="text-lg">Entrar</CardTitle>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  autoComplete={isLogin ? "current-password" : "new-password"}
-                />
+              <CardDescription>
+                Acesse seu painel de gestao
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    autoComplete="email"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Senha</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    autoComplete="current-password"
+                  />
+                </div>
+
+                {error && (
+                  <p className="text-sm text-destructive">{error}</p>
+                )}
+                {success && (
+                  <p className="text-sm text-orbi-emerald">{success}</p>
+                )}
+
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Entrar
+                </Button>
+              </form>
+
+              <div className="mt-4 text-center">
+                <button
+                  type="button"
+                  onClick={switchMode}
+                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Nao tem conta? <span className="font-medium text-primary">Criar agora</span>
+                </button>
               </div>
+            </CardContent>
+          </Card>
+        ) : (
+          /* Cadastro */
+          <Card className="border-primary/20 border">
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5 text-orbi-emerald" />
+                <CardTitle className="text-lg">Criar conta</CardTitle>
+              </div>
+              <CardDescription>
+                Preencha seus dados para comecar a usar o OrbiCore
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nome completo</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Seu nome"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    autoComplete="name"
+                    autoFocus
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-email">Email</Label>
+                  <Input
+                    id="signup-email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    autoComplete="email"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-password">Senha</Label>
+                  <Input
+                    id="signup-password"
+                    type="password"
+                    placeholder="Minimo 6 caracteres"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirmar senha</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    placeholder="Repita a senha"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    autoComplete="new-password"
+                  />
+                </div>
 
-              {error && (
-                <p className="text-sm text-destructive">{error}</p>
-              )}
-              {success && (
-                <p className="text-sm text-orbi-emerald">{success}</p>
-              )}
+                {error && (
+                  <p className="text-sm text-destructive">{error}</p>
+                )}
+                {success && (
+                  <p className="text-sm text-orbi-emerald">{success}</p>
+                )}
 
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                {isLogin ? "Entrar" : "Criar conta"}
-              </Button>
-            </form>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Criar minha conta
+                </Button>
+              </form>
 
-            <div className="mt-4 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setError("");
-                  setSuccess("");
-                }}
-                className="text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
-                {isLogin
-                  ? "Nao tem conta? Criar agora"
-                  : "Ja tem conta? Entrar"}
-              </button>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="mt-4 text-center">
+                <button
+                  type="button"
+                  onClick={switchMode}
+                  className="text-sm text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1"
+                >
+                  <ArrowLeft className="h-3 w-3" />
+                  Voltar para o login
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <p className="text-center text-xs text-muted-foreground">
           OrbiCore v0.1.0 &mdash; by Orbitamos
