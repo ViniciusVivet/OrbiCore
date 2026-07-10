@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { AppData, Contract, Meeting, Product, Sale, PayrollMonth, Goal, OrgProfile } from "./types";
+import { AppData, Contract, Meeting, Product, Sale, PayrollMonth, OrgProfile } from "./types";
 import { SEED_DATA } from "./seed-data";
 
 const STORAGE_KEY = "orbicore_data";

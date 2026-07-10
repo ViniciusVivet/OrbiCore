@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -9,9 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, FileText, Pencil, Trash2, TrendingUp } from "lucide-react";
+import { Plus, FileText, Pencil, Trash2 } from "lucide-react";
 import { useAppStore } from "@/components/store-provider";
-import { currency, dateFormat, shortMonthName } from "@/lib/format";
+import { currency, dateFormat } from "@/lib/format";
 import { monthsInYear, monthsNextYear } from "@/lib/calculations";
 import { Contract, ContractStatus, RevenueType } from "@/lib/types";
 
@@ -169,8 +169,6 @@ export default function ContractsPage() {
                   {contracts.map((c) => {
                     const mInYear = monthsInYear(c.saleDate, c.durationMonths, year);
                     const mNextYear = monthsNextYear(c.saleDate, c.durationMonths, year);
-                    const d = new Date(c.saleDate);
-                    const entryMonth = shortMonthName(d.getMonth() + 1);
                     return (
                       <TableRow key={c.id}>
                         <TableCell className="whitespace-nowrap">{dateFormat(c.saleDate)}</TableCell>

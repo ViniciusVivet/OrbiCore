@@ -84,12 +84,10 @@ export function mrrChartData(contracts: Contract[], year: number, statusFilter?:
     "Jul", "Ago", "Set", "Out", "Nov", "Dez",
   ];
 
-  let accumulated = 0;
   return months.map((name, i) => {
     const month = i + 1;
     // MRR acumulado = soma de fee*mesesNoAno para contratos vendidos ate esse mes
     const mrrMonth = mrrInMonth(contracts, year, month, statusFilter);
-    accumulated += mrrMonth;
 
     // MRR acumulado real = soma fee * meses que ja passaram no ano ate esse mes
     const accReal = contracts
