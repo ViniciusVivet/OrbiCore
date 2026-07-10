@@ -11,6 +11,7 @@ import {
   FileSpreadsheet,
   Settings,
   Orbit,
+  LogOut,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -26,6 +27,9 @@ import {
   SidebarMenuItem,
   SidebarFooter,
 } from "@/components/ui/sidebar";
+import { useAppStore } from "@/components/store-provider";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 const mainNav = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -71,6 +75,15 @@ function NavSection({ label, items }: { label: string; items: typeof mainNav }) 
 }
 
 export function AppSidebar() {
+  const { logout } = useAppStore();
+  const router = useRouter();
+
+  async function handleLogout() {
+    await logout();
+    router.push("/login");
+    router.refresh();
+  }
+
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
@@ -96,9 +109,20 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-4">
-        <p className="text-[11px] text-muted-foreground">
-          OrbiCore v0.1.0
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] text-muted-foreground">
+            OrbiCore v0.1.0
+          </p>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+            onClick={handleLogout}
+            title="Sair"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
       </SidebarFooter>
     </Sidebar>
   );

@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, ShoppingCart, TrendingUp, DollarSign, BarChart3 } from "lucide-react";
+import { Plus, Trash2, ShoppingCart, TrendingUp, DollarSign, BarChart3, ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { useAppStore } from "@/components/store-provider";
 import { currency, dateFormat, percent } from "@/lib/format";
 import { saleProfitAndMargin } from "@/lib/calculations";
@@ -111,8 +112,17 @@ export default function SalesPage() {
 
       {products.length === 0 ? (
         <Card className="border-border/50">
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">Cadastre produtos primeiro para registrar vendas.</p>
+          <CardContent className="py-12 flex flex-col items-center text-center">
+            <div className="rounded-full bg-muted p-6 mb-4">
+              <ShoppingCart className="h-10 w-10 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Sem produtos cadastrados</h3>
+            <p className="text-sm text-muted-foreground mb-4">Cadastre produtos primeiro para poder registrar vendas.</p>
+            <Link href="/products">
+              <Button className="gap-2">
+                Ir para Produtos <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       ) : (

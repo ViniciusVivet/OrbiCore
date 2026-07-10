@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { AppData, Contract, Meeting, Product, Sale, PayrollMonth, OrgProfile } from "./types";
 import { SEED_DATA } from "./seed-data";
+import { createClient } from "./supabase/client";
 
 const STORAGE_KEY = "orbicore_data";
 
@@ -10,20 +11,59 @@ function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-function loadData(): AppData {
-  if (typeof window === "undefined") return SEED_DATA;
+// LocalStorage as fast cache
+function loadLocalCache(): AppData | null {
+  if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
   } catch {}
-  // First load: seed with Vagner's data
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_DATA));
-  return SEED_DATA;
+  return null;
 }
 
-function saveData(data: AppData) {
+function saveLocalCache(data: AppData) {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+// Supabase sync
+async function loadFromSupabase(): Promise<AppData | null> {
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data, error } = await supabase
+      .from("app_data")
+      .select("data")
+      .eq("user_id", user.id)
+      .single();
+
+    if (error || !data) return null;
+    return data.data as AppData;
+  } catch {
+    return null;
+  }
+}
+
+async function saveToSupabase(appData: AppData) {
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await supabase
+      .from("app_data")
+      .upsert({
+        user_id: user.id,
+        data: appData,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: "user_id",
+      });
+  } catch {
+    // Fail silently — localStorage still has the data
+  }
 }
 
 export function useStore() {
@@ -31,14 +71,37 @@ export function useStore() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    setData(loadData());
-    setLoaded(true);
+    async function init() {
+      // 1. Load local cache instantly (fast)
+      const cached = loadLocalCache();
+      if (cached) setData(cached);
+
+      // 2. Try Supabase (source of truth)
+      const remote = await loadFromSupabase();
+      if (remote) {
+        setData(remote);
+        saveLocalCache(remote);
+      } else if (!cached) {
+        // First time user — seed with defaults
+        setData(SEED_DATA);
+        saveLocalCache(SEED_DATA);
+        saveToSupabase(SEED_DATA);
+      } else {
+        // Has local cache but no remote — push to Supabase
+        saveToSupabase(cached);
+      }
+
+      setLoaded(true);
+    }
+
+    init();
   }, []);
 
   const update = useCallback((updater: (prev: AppData) => AppData) => {
     setData((prev) => {
       const next = updater(prev);
-      saveData(next);
+      saveLocalCache(next);
+      saveToSupabase(next);
       return next;
     });
   }, []);
@@ -138,8 +201,16 @@ export function useStore() {
 
   // --- Reset ---
   const resetData = useCallback(() => {
-    saveData(SEED_DATA);
+    saveLocalCache(SEED_DATA);
+    saveToSupabase(SEED_DATA);
     setData(SEED_DATA);
+  }, []);
+
+  // --- Logout ---
+  const logout = useCallback(async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    localStorage.removeItem(STORAGE_KEY);
   }, []);
 
   return {
@@ -159,5 +230,6 @@ export function useStore() {
     deleteSale,
     upsertPayroll,
     resetData,
+    logout,
   };
 }
