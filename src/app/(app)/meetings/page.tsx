@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -9,12 +9,30 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Users, CalendarCheck, Send, Handshake } from "lucide-react";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { Plus, Pencil, Trash2, Users, CalendarCheck, Send, Handshake, Target } from "lucide-react";
 import { useAppStore } from "@/components/store-provider";
 import { currency, dateFormat, percent } from "@/lib/format";
-import { meetingAlert, expectedRevenue } from "@/lib/calculations";
+import { meetingAlert, expectedRevenue, meetingFunnel, channelPerformance, weightedPipelineRevenue } from "@/lib/calculations";
 import { Meeting, MeetingStatus, MeetingChannel, MeetingType } from "@/lib/types";
+import { useSortable } from "@/hooks/use-sortable";
+import { SortableHeader } from "@/components/sortable-header";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+
+const COLORS = {
+  cyan: "oklch(0.75 0.15 195)",
+  blue: "oklch(0.65 0.15 250)",
+  emerald: "oklch(0.7 0.17 155)",
+  amber: "oklch(0.8 0.15 75)",
+  rose: "oklch(0.65 0.2 15)",
+  purple: "oklch(0.65 0.2 300)",
+  muted: "oklch(0.28 0.01 260)",
+  text: "oklch(0.65 0.01 260)",
+  bg: "oklch(0.18 0.005 260)",
+  border: "oklch(0.28 0.01 260)",
+};
+
+const FUNNEL_COLORS = [COLORS.blue, COLORS.cyan, COLORS.purple, COLORS.emerald];
 
 const statusColors: Record<MeetingStatus, string> = {
   Agendada: "bg-orbi-blue/20 text-orbi-blue",
@@ -49,6 +67,8 @@ const emptyForm: FormData = {
   notes: "",
 };
 
+type MeetingRow = Meeting & { expectedRevenue: number; alert: string };
+
 export default function MeetingsPage() {
   const { data, loaded, addMeeting, updateMeeting, deleteMeeting } = useAppStore();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -56,16 +76,31 @@ export default function MeetingsPage() {
   const [form, setForm] = useState<FormData>(emptyForm);
   const [statusFilter, setStatusFilter] = useState<string>("Todos");
 
-  if (!loaded) return null;
+  const filtered = loaded
+    ? data.meetings.filter((m) => statusFilter === "Todos" || m.status === statusFilter)
+    : [];
 
-  const meetings = data.meetings.filter(
-    (m) => statusFilter === "Todos" || m.status === statusFilter
-  );
+  const enriched: MeetingRow[] = filtered.map((m) => ({
+    ...m,
+    expectedRevenue: m.expectedMRR * m.probability,
+    alert: meetingAlert(m),
+  }));
+
+  const { sorted: meetings, sortKey, sortDir, toggleSort } = useSortable<MeetingRow>(enriched);
+
+  if (!loaded) return null;
 
   const totalRevenue = expectedRevenue(data.meetings);
   const totalMeetings = data.meetings.length;
   const closedCount = data.meetings.filter((m) => m.status === "Fechada").length;
   const proposalCount = data.meetings.filter((m) => m.status === "Proposta enviada").length;
+  const pipeline = weightedPipelineRevenue(data.meetings);
+
+  // Insights
+  const funnel = meetingFunnel(data.meetings);
+  const channels = channelPerformance(data.meetings);
+  const lostCount = data.meetings.filter((m) => m.status === "Perdida").length;
+  const closeRate = totalMeetings > 0 ? closedCount / totalMeetings : 0;
 
   function openNew() {
     setEditingId(null);
@@ -113,7 +148,8 @@ export default function MeetingsPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      {/* Summary cards */}
+      <div className="grid gap-4 md:grid-cols-5">
         <Card className="border-border/50">
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 mb-1">
@@ -139,6 +175,17 @@ export default function MeetingsPage() {
               <p className="text-sm text-muted-foreground">Fechadas</p>
             </div>
             <p className="text-2xl font-bold">{closedCount}</p>
+            <p className="text-xs text-muted-foreground">Taxa: {percent(closeRate, 0)}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-border/50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 mb-1">
+              <Target className="h-4 w-4 text-purple-400" />
+              <p className="text-sm text-muted-foreground">Pipeline Ponderado</p>
+            </div>
+            <p className="text-2xl font-bold">{currency(pipeline.weighted)}</p>
+            <p className="text-xs text-muted-foreground">{pipeline.dealCount} deals abertos</p>
           </CardContent>
         </Card>
         <Card className="border-border/50">
@@ -152,6 +199,87 @@ export default function MeetingsPage() {
         </Card>
       </div>
 
+      {/* Charts */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Sales funnel */}
+        <Card className="border-border/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Funil de Vendas</CardTitle>
+            <CardDescription>Conversao: Agendada → Realizada → Proposta → Fechada</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {funnel.map((step, i) => {
+                const maxCount = Math.max(...funnel.map((f) => f.count), 1);
+                const widthPct = Math.max((step.count / maxCount) * 100, 8);
+                return (
+                  <div key={step.status}>
+                    <div className="flex items-center justify-between text-sm mb-1">
+                      <span className="font-medium">{step.status}</span>
+                      <span className="text-muted-foreground">{step.count} ({currency(step.revenue)})</span>
+                    </div>
+                    <div className="h-8 rounded-md overflow-hidden bg-muted">
+                      <div
+                        className="h-full rounded-md flex items-center px-3 transition-all"
+                        style={{ width: `${widthPct}%`, background: FUNNEL_COLORS[i] }}
+                      >
+                        <span className="text-xs font-bold text-white">{step.count}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {lostCount > 0 && (
+                <div className="pt-1 text-xs text-orbi-rose">
+                  {lostCount} perdida(s) — nao entram no funil
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Channel performance */}
+        {channels.length > 0 && (
+          <Card className="border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Performance por Canal</CardTitle>
+              <CardDescription>MRR esperado e taxa de fechamento por canal de origem</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={channels} margin={{ left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={COLORS.muted} />
+                    <XAxis dataKey="channel" stroke={COLORS.text} fontSize={11} />
+                    <YAxis stroke={COLORS.text} fontSize={11} tickFormatter={(v: number) => `${v}`} />
+                    <Tooltip
+                      contentStyle={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: "8px" }}
+                      formatter={(value, name) => [
+                        name === "total" ? `${Number(value)} reunioes` : `${Number(value)} fechadas`,
+                        name === "total" ? "Total" : "Fechadas"
+                      ]}
+                    />
+                    <Bar dataKey="total" fill={COLORS.blue} radius={[4, 4, 0, 0]} name="total" />
+                    <Bar dataKey="closed" fill={COLORS.emerald} radius={[4, 4, 0, 0]} name="closed" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {channels.map((ch) => (
+                  <div key={ch.channel} className="text-xs text-muted-foreground flex justify-between px-2">
+                    <span>{ch.channel}</span>
+                    <span className={ch.closeRate > 0 ? "text-orbi-emerald" : ""}>
+                      {percent(ch.closeRate, 0)} conv.
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Status filter */}
       <div className="flex gap-2 flex-wrap">
         {["Todos", "Agendada", "Realizada", "Remarcar", "Proposta enviada", "Fechada", "Perdida"].map((s) => (
           <Button key={s} variant={statusFilter === s ? "default" : "outline"} size="sm" onClick={() => setStatusFilter(s)}>
@@ -160,6 +288,7 @@ export default function MeetingsPage() {
         ))}
       </div>
 
+      {/* Table */}
       <Card className="border-border/50">
         <CardContent className="p-0">
           {meetings.length === 0 ? (
@@ -173,47 +302,42 @@ export default function MeetingsPage() {
           ) : (
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Cliente/Lead</TableHead>
-                    <TableHead>Responsavel</TableHead>
-                    <TableHead>Canal</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                    <TableHead className="text-right">MRR Previsto</TableHead>
-                    <TableHead className="text-center">Prob.</TableHead>
-                    <TableHead className="text-right">Receita Esp.</TableHead>
-                    <TableHead className="text-center">Alerta</TableHead>
-                    <TableHead className="text-right">Acoes</TableHead>
-                  </TableRow>
-                </TableHeader>
+                <thead>
+                  <tr className="border-b">
+                    <SortableHeader label="Data" sortKey={"date" as keyof MeetingRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                    <SortableHeader label="Cliente/Lead" sortKey={"clientLead" as keyof MeetingRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                    <SortableHeader label="Canal" sortKey={"channel" as keyof MeetingRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                    <SortableHeader label="Status" sortKey={"status" as keyof MeetingRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-center" />
+                    <SortableHeader label="MRR Prev." sortKey={"expectedMRR" as keyof MeetingRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-right" />
+                    <SortableHeader label="Prob." sortKey={"probability" as keyof MeetingRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-center" />
+                    <SortableHeader label="Receita Esp." sortKey={"expectedRevenue" as keyof MeetingRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-right" />
+                    <SortableHeader label="Alerta" sortKey={"alert" as keyof MeetingRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-center" />
+                    <th className="h-10 px-4 text-right text-sm font-medium text-muted-foreground">Acoes</th>
+                  </tr>
+                </thead>
                 <TableBody>
-                  {meetings.map((m) => {
-                    const alert = meetingAlert(m);
-                    return (
-                      <TableRow key={m.id}>
-                        <TableCell className="whitespace-nowrap">{dateFormat(m.date)}</TableCell>
-                        <TableCell className="font-medium">{m.clientLead}</TableCell>
-                        <TableCell>{m.responsible}</TableCell>
-                        <TableCell>{m.channel}</TableCell>
-                        <TableCell className="text-center">
-                          <Badge className={statusColors[m.status]}>{m.status}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">{currency(m.expectedMRR)}</TableCell>
-                        <TableCell className="text-center">{percent(m.probability, 0)}</TableCell>
-                        <TableCell className="text-right">{currency(m.expectedMRR * m.probability)}</TableCell>
-                        <TableCell className="text-center">
-                          <Badge className={alertColors[alert] || "bg-muted"}>{alert}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => openEdit(m)}><Pencil className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" onClick={() => deleteMeeting(m.id)}><Trash2 className="h-4 w-4 text-orbi-rose" /></Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {meetings.map((m) => (
+                    <TableRow key={m.id}>
+                      <TableCell className="whitespace-nowrap">{dateFormat(m.date)}</TableCell>
+                      <TableCell className="font-medium">{m.clientLead}</TableCell>
+                      <TableCell>{m.channel}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge className={statusColors[m.status]}>{m.status}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">{currency(m.expectedMRR)}</TableCell>
+                      <TableCell className="text-center">{percent(m.probability, 0)}</TableCell>
+                      <TableCell className="text-right">{currency(m.expectedRevenue)}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge className={alertColors[m.alert] || "bg-muted"}>{m.alert}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(m)}><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => deleteMeeting(m.id)}><Trash2 className="h-4 w-4 text-orbi-rose" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>
@@ -221,6 +345,7 @@ export default function MeetingsPage() {
         </CardContent>
       </Card>
 
+      {/* Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>

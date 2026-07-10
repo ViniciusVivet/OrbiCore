@@ -114,6 +114,111 @@ export function mrrChartData(contracts: Contract[], year: number, statusFilter?:
 }
 
 // =============================================
+// Insights Cruzados & Metricas Avancadas
+// =============================================
+
+/** Concentracao de clientes — top clientes por MRR com % acumulado */
+export function clientConcentration(contracts: Contract[]) {
+  const active = contracts.filter((c) => c.status === "Ativo");
+  const totalMRR = active.reduce((s, c) => s + c.monthlyFee, 0);
+  const sorted = [...active].sort((a, b) => b.monthlyFee - a.monthlyFee);
+  let cumulative = 0;
+  return sorted.map((c) => {
+    cumulative += c.monthlyFee;
+    return {
+      client: c.client,
+      mrr: c.monthlyFee,
+      percent: totalMRR > 0 ? c.monthlyFee / totalMRR : 0,
+      cumulativePercent: totalMRR > 0 ? cumulative / totalMRR : 0,
+    };
+  });
+}
+
+/** Breakdown de MRR por tipo de receita */
+export function mrrByRevenueType(contracts: Contract[]) {
+  const active = contracts.filter((c) => c.status === "Ativo");
+  const groups: Record<string, number> = {};
+  active.forEach((c) => {
+    groups[c.revenueType] = (groups[c.revenueType] || 0) + c.monthlyFee;
+  });
+  return Object.entries(groups).map(([type, value]) => ({ type, value }));
+}
+
+/** Risco de churn — contratos que vencem nos proximos N meses */
+export function churnRisk(contracts: Contract[], year: number, withinMonths = 3) {
+  const now = new Date();
+  const active = contracts.filter((c) => c.status === "Ativo");
+  const totalMRR = active.reduce((s, c) => s + c.monthlyFee, 0);
+  const atRisk = active.filter((c) => {
+    const start = new Date(c.saleDate);
+    const end = new Date(start);
+    end.setMonth(end.getMonth() + c.durationMonths);
+    const diffDays = (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+    return diffDays > 0 && diffDays <= withinMonths * 30;
+  });
+  const mrrAtRisk = atRisk.reduce((s, c) => s + c.monthlyFee, 0);
+  return {
+    contracts: atRisk,
+    mrrAtRisk,
+    percentOfTotal: totalMRR > 0 ? mrrAtRisk / totalMRR : 0,
+    count: atRisk.length,
+  };
+}
+
+/** Funil de reunioes — contagem por status na ordem do pipeline */
+export function meetingFunnel(meetings: Meeting[]) {
+  const order: string[] = ["Agendada", "Realizada", "Proposta enviada", "Fechada"];
+  return order.map((status) => {
+    const filtered = meetings.filter((m) => m.status === status);
+    const revenue = filtered.reduce((s, m) => s + m.expectedMRR * m.probability, 0);
+    return { status, count: filtered.length, revenue };
+  });
+}
+
+/** Performance por canal — contagem, receita, e taxa de fechamento */
+export function channelPerformance(meetings: Meeting[]) {
+  const channels: Record<string, { total: number; closed: number; revenue: number; expectedMRR: number }> = {};
+  meetings.forEach((m) => {
+    if (!channels[m.channel]) channels[m.channel] = { total: 0, closed: 0, revenue: 0, expectedMRR: 0 };
+    channels[m.channel].total++;
+    channels[m.channel].expectedMRR += m.expectedMRR;
+    if (m.status === "Fechada") {
+      channels[m.channel].closed++;
+      channels[m.channel].revenue += m.expectedMRR;
+    }
+  });
+  return Object.entries(channels)
+    .map(([channel, data]) => ({
+      channel,
+      ...data,
+      closeRate: data.total > 0 ? data.closed / data.total : 0,
+    }))
+    .sort((a, b) => b.revenue - a.revenue);
+}
+
+/** Receita ponderada do pipeline (WAR) — deals abertos pesados por probabilidade */
+export function weightedPipelineRevenue(meetings: Meeting[]) {
+  const open = meetings.filter((m) => !["Fechada", "Perdida"].includes(m.status));
+  const weighted = open.reduce((s, m) => s + m.expectedMRR * m.probability, 0);
+  const bestCase = open.reduce((s, m) => s + m.expectedMRR, 0);
+  return { weighted, bestCase, dealCount: open.length };
+}
+
+/** Taxa de crescimento trimestral */
+export function quarterlyGrowthRate(contracts: Contract[], year: number) {
+  const quarters = [1, 2, 3, 4].map((q) => ({
+    quarter: q,
+    mrr: mrrInQuarter(contracts, year, q, "Ativo"),
+  }));
+  return quarters.map((q, i) => ({
+    ...q,
+    growth: i > 0 && quarters[i - 1].mrr > 0
+      ? (q.mrr - quarters[i - 1].mrr) / quarters[i - 1].mrr
+      : null,
+  }));
+}
+
+// =============================================
 // Reunioes Calculations
 // =============================================
 
