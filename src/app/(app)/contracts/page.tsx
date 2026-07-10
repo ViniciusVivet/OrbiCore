@@ -324,7 +324,7 @@ export default function ContractsPage() {
             <DialogTitle>{editingId ? "Editar Contrato" : "Novo Contrato"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Data da Venda</Label>
                 <Input type="date" value={form.saleDate} onChange={(e) => setForm({ ...form, saleDate: e.target.value })} />
@@ -334,7 +334,7 @@ export default function ContractsPage() {
                 <Input value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value })} placeholder="Nome do cliente" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Fee Mensal (R$)</Label>
                 <Input type="number" step="0.01" value={form.monthlyFee || ""} onChange={(e) => setForm({ ...form, monthlyFee: parseFloat(e.target.value) || 0 })} />
@@ -344,7 +344,7 @@ export default function ContractsPage() {
                 <Input type="number" value={form.durationMonths || ""} onChange={(e) => setForm({ ...form, durationMonths: parseInt(e.target.value) || 0 })} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Status</Label>
                 <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as ContractStatus })}>
@@ -369,7 +369,7 @@ export default function ContractsPage() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Valor Onboarding (R$)</Label>
                 <Input type="number" step="0.01" value={form.onboardingValue || ""} onChange={(e) => setForm({ ...form, onboardingValue: parseFloat(e.target.value) || 0 })} />

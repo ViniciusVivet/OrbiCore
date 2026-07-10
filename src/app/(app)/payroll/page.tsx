@@ -137,7 +137,7 @@ export default function PayrollPage() {
             <CardDescription>Preencha os valores. Home Office nao entra na base de INSS/IRRF.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Salario Base (R$)</Label>
                 <Input type="number" step="0.01" value={form.baseSalary || ""} onChange={(e) => setForm({ ...form, baseSalary: parseFloat(e.target.value) || 0 })} />
@@ -151,7 +151,7 @@ export default function PayrollPage() {
               <Label>Comissao (R$)</Label>
               <Input type="number" step="0.01" value={form.commission || ""} onChange={(e) => setForm({ ...form, commission: parseFloat(e.target.value) || 0 })} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Dias Uteis</Label>
                 <Input type="number" value={form.workDays || ""} onChange={(e) => setForm({ ...form, workDays: parseInt(e.target.value) || 0 })} />

@@ -170,7 +170,7 @@ export default function ProductsPage() {
             <DialogTitle>{editingId ? "Editar Produto" : "Novo Produto"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Produto</Label>
                 <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nome do produto" />
@@ -184,7 +184,7 @@ export default function ProductsPage() {
               <Label>Fornecedor</Label>
               <Input value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} placeholder="Nome do fornecedor" />
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Qtd Inicial</Label>
                 <Input type="number" value={form.initialQty || ""} onChange={(e) => setForm({ ...form, initialQty: parseInt(e.target.value) || 0 })} />
@@ -198,7 +198,7 @@ export default function ProductsPage() {
                 <Input type="number" value={form.minStock || ""} onChange={(e) => setForm({ ...form, minStock: parseInt(e.target.value) || 0 })} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Custo Unit. (R$)</Label>
                 <Input type="number" step="0.01" value={form.costPrice || ""} onChange={(e) => setForm({ ...form, costPrice: parseFloat(e.target.value) || 0 })} />

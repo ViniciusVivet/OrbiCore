@@ -118,6 +118,11 @@ export interface OrgProfile {
   enabledModules: ModuleKey[];
   yearlyGoal: number;
   currentYear: number;
+  meetingGoalMonthly?: number;
+  closeRateTarget?: number;
+  newContractsMonthly?: number;
+  salesRevenueMonthly?: number;
+  [key: string]: unknown;
 }
 
 // --- Store ---
