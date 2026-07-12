@@ -45,7 +45,7 @@ const statusColors: Record<MeetingStatus, string> = {
 
 const alertColors: Record<string, string> = {
   "Retorno vencido": "bg-orbi-rose/20 text-orbi-rose",
-  "Retorno proximo": "bg-orbi-amber/20 text-orbi-amber",
+  "Retorno próximo": "bg-orbi-amber/20 text-orbi-amber",
   "Em dia": "bg-orbi-emerald/20 text-orbi-emerald",
   Fechada: "bg-orbi-emerald/20 text-orbi-emerald",
   Perdida: "bg-muted text-muted-foreground",
@@ -139,12 +139,12 @@ export default function MeetingsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Reunioes</h2>
-          <p className="text-muted-foreground">Controle reunioes, propostas e pipeline de vendas</p>
+          <h2 className="text-2xl font-bold tracking-tight">Reuniões</h2>
+          <p className="text-muted-foreground">Controle reuniões, propostas e pipeline de vendas</p>
         </div>
         <Button onClick={openNew} className="gap-2">
           <Plus className="h-4 w-4" />
-          Nova Reuniao
+          Nova Reunião
         </Button>
       </div>
 
@@ -205,7 +205,7 @@ export default function MeetingsPage() {
         <Card className="border-border/50">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Funil de Vendas</CardTitle>
-            <CardDescription>Conversao: Agendada → Realizada → Proposta → Fechada</CardDescription>
+            <CardDescription>Conversão: Agendada → Realizada → Proposta → Fechada</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -231,7 +231,7 @@ export default function MeetingsPage() {
               })}
               {lostCount > 0 && (
                 <div className="pt-1 text-xs text-orbi-rose">
-                  {lostCount} perdida(s) — nao entram no funil
+                  {lostCount} perdida(s) — não entram no funil
                 </div>
               )}
             </div>
@@ -255,7 +255,7 @@ export default function MeetingsPage() {
                     <Tooltip
                       contentStyle={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: "8px" }}
                       formatter={(value, name) => [
-                        name === "total" ? `${Number(value)} reunioes` : `${Number(value)} fechadas`,
+                        name === "total" ? `${Number(value)} reuniões` : `${Number(value)} fechadas`,
                         name === "total" ? "Total" : "Fechadas"
                       ]}
                     />
@@ -296,8 +296,8 @@ export default function MeetingsPage() {
               <div className="rounded-full bg-muted p-6 mb-4">
                 <Users className="h-10 w-10 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">Nenhuma reuniao encontrada</h3>
-              <Button onClick={openNew} className="mt-4 gap-2"><Plus className="h-4 w-4" />Nova Reuniao</Button>
+              <h3 className="text-lg font-semibold mb-2">Nenhuma reunião encontrada</h3>
+              <Button onClick={openNew} className="mt-4 gap-2"><Plus className="h-4 w-4" />Nova Reunião</Button>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -312,7 +312,7 @@ export default function MeetingsPage() {
                     <SortableHeader label="Prob." sortKey={"probability" as keyof MeetingRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-center" />
                     <SortableHeader label="Receita Esp." sortKey={"expectedRevenue" as keyof MeetingRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-right" />
                     <SortableHeader label="Alerta" sortKey={"alert" as keyof MeetingRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-center" />
-                    <th className="h-10 px-4 text-right text-sm font-medium text-muted-foreground">Acoes</th>
+                    <th className="h-10 px-4 text-right text-sm font-medium text-muted-foreground">Ações</th>
                   </tr>
                 </thead>
                 <TableBody>
@@ -349,7 +349,7 @@ export default function MeetingsPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Editar Reuniao" : "Nova Reuniao"}</DialogTitle>
+            <DialogTitle>{editingId ? "Editar Reunião" : "Nova Reunião"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
@@ -364,7 +364,7 @@ export default function MeetingsPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Responsavel</Label>
+                <Label>Responsável</Label>
                 <Input value={form.responsible} onChange={(e) => setForm({ ...form, responsible: e.target.value })} placeholder="Quem" />
               </div>
               <div className="space-y-2">
@@ -413,13 +413,13 @@ export default function MeetingsPage() {
                 <Input type="number" min="0" max="100" value={Math.round(form.probability * 100) || ""} onChange={(e) => setForm({ ...form, probability: (parseInt(e.target.value) || 0) / 100 })} />
               </div>
               <div className="space-y-2">
-                <Label>Proximo Retorno</Label>
+                <Label>Próximo Retorno</Label>
                 <Input type="date" value={form.nextReturnDate} onChange={(e) => setForm({ ...form, nextReturnDate: e.target.value })} />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Observacoes</Label>
-              <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Anotacoes sobre a reuniao..." />
+              <Label>Observações</Label>
+              <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Anotações sobre a reunião..." />
             </div>
           </div>
           <DialogFooter>

@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "OrbiCore",
-  description: "Plataforma visual de gestao para pequenos negocios",
+  description: "Plataforma visual de gestão para pequenos negócios",
 };
 
 export default function RootLayout({

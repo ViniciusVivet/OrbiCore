@@ -35,11 +35,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     applyTheme(t);
   }, []);
 
-  if (!mounted) return null;
-
   return (
     <ThemeContext.Provider value={{ theme, setTheme }}>
-      {children}
+      <div style={{ visibility: mounted ? "visible" : "hidden" }}>
+        {children}
+      </div>
     </ThemeContext.Provider>
   );
 }

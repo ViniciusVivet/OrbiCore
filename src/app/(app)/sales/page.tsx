@@ -103,7 +103,7 @@ export default function SalesPage() {
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 mb-1">
               <BarChart3 className="h-4 w-4 text-orbi-amber" />
-              <p className="text-sm text-muted-foreground">Margem Media</p>
+              <p className="text-sm text-muted-foreground">Margem Média</p>
             </div>
             <p className="text-2xl font-bold">{percent(avgMargin, 1)}</p>
           </CardContent>
@@ -145,11 +145,11 @@ export default function SalesPage() {
                       <TableHead>Produto</TableHead>
                       <TableHead className="text-center">Qtde</TableHead>
                       <TableHead className="text-right">Custo Unit.</TableHead>
-                      <TableHead className="text-right">Preco Venda</TableHead>
+                      <TableHead className="text-right">Preço Venda</TableHead>
                       <TableHead className="text-right">Custo Total</TableHead>
                       <TableHead className="text-right">Lucro</TableHead>
                       <TableHead className="text-center">Margem</TableHead>
-                      <TableHead className="text-right">Acoes</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -213,7 +213,7 @@ export default function SalesPage() {
               const profit = (p.salePrice - p.costPrice) * (form.quantity || 0);
               return (
                 <div className="rounded-lg bg-muted p-3 space-y-1">
-                  <p className="text-sm text-muted-foreground">Previa da venda:</p>
+                  <p className="text-sm text-muted-foreground">Prévia da venda:</p>
                   <p className="text-sm">Receita: <span className="font-medium">{currency(p.salePrice * (form.quantity || 0))}</span></p>
                   <p className="text-sm">Lucro: <span className="font-medium text-orbi-emerald">{currency(profit)}</span></p>
                 </div>

@@ -38,7 +38,7 @@ import { Button } from "@/components/ui/button";
 const mainNav = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Contratos", href: "/contracts", icon: FileText },
-  { title: "Reunioes", href: "/meetings", icon: Users },
+  { title: "Reuniões", href: "/meetings", icon: Users },
   { title: "Metas", href: "/goals", icon: Target },
 ];
 
@@ -48,9 +48,9 @@ const operationsNav = [
 ];
 
 const toolsNav = [
-  { title: "Calculo Mensal", href: "/payroll", icon: Calculator },
+  { title: "Cálculo Mensal", href: "/payroll", icon: Calculator },
   { title: "Exportar Excel", href: "/export", icon: FileSpreadsheet },
-  { title: "Configuracoes", href: "/settings", icon: Settings },
+  { title: "Configurações", href: "/settings", icon: Settings },
 ];
 
 const THEME_CYCLE: ThemeKey[] = ["dark", "light", "vibrant"];
@@ -119,7 +119,7 @@ export function AppSidebar() {
               OrbiCore
             </h1>
             <p className="text-[11px] text-muted-foreground">
-              Gestao inteligente
+              Gestão inteligente
             </p>
           </div>
         </Link>
@@ -127,7 +127,7 @@ export function AppSidebar() {
 
       <SidebarContent data-tour="sidebar">
         <NavSection label="Principal" items={mainNav} />
-        <NavSection label="Operacoes" items={operationsNav} />
+        <NavSection label="Operações" items={operationsNav} />
         <NavSection label="Ferramentas" items={toolsNav} />
       </SidebarContent>
 

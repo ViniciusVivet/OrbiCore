@@ -244,7 +244,7 @@ export function meetingAlert(meeting: Meeting): string {
     (new Date(meeting.nextReturnDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
   );
   if (diff < 0) return "Retorno vencido";
-  if (diff <= 3) return "Retorno proximo";
+  if (diff <= 3) return "Retorno próximo";
   return "Em dia";
 }
 

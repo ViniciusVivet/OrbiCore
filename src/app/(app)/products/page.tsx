@@ -68,7 +68,7 @@ export default function ProductsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Produtos</h2>
-          <p className="text-muted-foreground">Catalogo de produtos com custo, preco e margem</p>
+          <p className="text-muted-foreground">Catálogo de produtos com custo, preço e margem</p>
         </div>
         <Button onClick={openNew} className="gap-2"><Plus className="h-4 w-4" />Novo Produto</Button>
       </div>
@@ -90,7 +90,7 @@ export default function ProductsPage() {
           <CardContent className="pt-6">
             <div className="flex items-center gap-2">
               {restockCount > 0 && <AlertTriangle className="h-4 w-4 text-orbi-amber" />}
-              <p className="text-sm text-muted-foreground">Alertas de Reposicao</p>
+              <p className="text-sm text-muted-foreground">Alertas de Reposição</p>
             </div>
             <p className="text-2xl font-bold">{restockCount}</p>
           </CardContent>
@@ -123,7 +123,7 @@ export default function ProductsPage() {
                     <TableHead className="text-right">Lucro</TableHead>
                     <TableHead className="text-center">Margem</TableHead>
                     <TableHead className="text-center">Status</TableHead>
-                    <TableHead className="text-right">Acoes</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -204,7 +204,7 @@ export default function ProductsPage() {
                 <Input type="number" step="0.01" value={form.costPrice || ""} onChange={(e) => setForm({ ...form, costPrice: parseFloat(e.target.value) || 0 })} />
               </div>
               <div className="space-y-2">
-                <Label>Preco Venda (R$)</Label>
+                <Label>Preço Venda (R$)</Label>
                 <Input type="number" step="0.01" value={form.salePrice || ""} onChange={(e) => setForm({ ...form, salePrice: parseFloat(e.target.value) || 0 })} />
               </div>
             </div>

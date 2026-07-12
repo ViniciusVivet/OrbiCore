@@ -61,7 +61,7 @@ export default function LoginPage() {
         return;
       }
       if (password !== confirmPassword) {
-        setError("As senhas nao coincidem");
+        setError("As senhas não coincidem");
         setLoading(false);
         return;
       }
@@ -108,7 +108,7 @@ export default function LoginPage() {
           </div>
           <div className="text-center">
             <h1 className="text-2xl font-bold tracking-tight">OrbiCore</h1>
-            <p className="text-sm text-muted-foreground">Gestao inteligente</p>
+            <p className="text-sm text-muted-foreground">Gestão inteligente</p>
           </div>
         </div>
 
@@ -121,7 +121,7 @@ export default function LoginPage() {
                 <CardTitle className="text-lg">Entrar</CardTitle>
               </div>
               <CardDescription>
-                Acesse seu painel de gestao
+                Acesse seu painel de gestão
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -170,7 +170,7 @@ export default function LoginPage() {
                   onClick={switchMode}
                   className="text-sm text-muted-foreground hover:text-primary transition-colors"
                 >
-                  Nao tem conta? <span className="font-medium text-primary">Criar agora</span>
+                  Não tem conta? <span className="font-medium text-primary">Criar agora</span>
                 </button>
               </div>
             </CardContent>
@@ -184,7 +184,7 @@ export default function LoginPage() {
                 <CardTitle className="text-lg">Criar conta</CardTitle>
               </div>
               <CardDescription>
-                Preencha seus dados para comecar a usar o OrbiCore
+                Preencha seus dados para começar a usar o OrbiCore
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -219,7 +219,7 @@ export default function LoginPage() {
                   <Input
                     id="signup-password"
                     type="password"
-                    placeholder="Minimo 6 caracteres"
+                    placeholder="Mínimo 6 caracteres"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required

@@ -27,7 +27,7 @@ export default function ExportPage() {
           "Data Venda": dateFormat(c.saleDate),
           "Cliente": c.client,
           "Fee Mensal": c.monthlyFee,
-          "Duracao (meses)": c.durationMonths,
+          "Duração (meses)": c.durationMonths,
           "Status": c.status,
           "Tipo": c.revenueType,
           "Meses no Ano": mInYear,
@@ -48,12 +48,12 @@ export default function ExportPage() {
       const dashRows = Array.from({ length: 12 }, (_, i) => {
         const m = i + 1;
         return {
-          "Mes": shortMonthName(m),
+          "Mês": shortMonthName(m),
           "MRR Vendido": mrrInMonth(data.contracts, year, m, "Ativo"),
         };
       });
       const mrrTotal = mrrEnteringYear(data.contracts, year, "Ativo");
-      dashRows.push({ "Mes": "TOTAL", "MRR Vendido": mrrTotal });
+      dashRows.push({ "Mês": "TOTAL", "MRR Vendido": mrrTotal });
       const ws2 = XLSX.utils.json_to_sheet(dashRows);
       XLSX.utils.book_append_sheet(wb, ws2, "Dashboard MRR");
 
@@ -62,19 +62,19 @@ export default function ExportPage() {
         const meetRows = data.meetings.map((m) => ({
           "Data": dateFormat(m.date),
           "Cliente/Lead": m.clientLead,
-          "Responsavel": m.responsible,
+          "Responsável": m.responsible,
           "Canal": m.channel,
           "Tipo": m.type,
           "Status": m.status,
           "MRR Previsto": m.expectedMRR,
           "Probabilidade": m.probability,
           "Receita Esperada": m.expectedMRR * m.probability,
-          "Proximo Retorno": m.nextReturnDate ? dateFormat(m.nextReturnDate) : "",
+          "Próximo Retorno": m.nextReturnDate ? dateFormat(m.nextReturnDate) : "",
           "Alerta": meetingAlert(m),
-          "Observacoes": m.notes || "",
+          "Observações": m.notes || "",
         }));
         const ws3 = XLSX.utils.json_to_sheet(meetRows);
-        XLSX.utils.book_append_sheet(wb, ws3, "Reunioes");
+        XLSX.utils.book_append_sheet(wb, ws3, "Reuniões");
       }
 
       // --- Produtos ---
@@ -90,7 +90,7 @@ export default function ExportPage() {
             "Estoque": stock,
             "Estoque Min": p.minStock,
             "Custo Unit": p.costPrice,
-            "Preco Venda": p.salePrice,
+            "Preço Venda": p.salePrice,
             "Lucro Unit": profit,
             "Margem": Math.round(margin * 100) + "%",
             "Status": stock <= p.minStock ? "REPOR" : "OK",
@@ -111,7 +111,7 @@ export default function ExportPage() {
             "Produto": p.name,
             "Qtde": s.quantity,
             "Custo Unit": p.costPrice,
-            "Preco Venda": p.salePrice,
+            "Preço Venda": p.salePrice,
             "Custo Total": cost,
             "Lucro": profit,
             "Margem": Math.round(margin * 100) + "%",
@@ -128,11 +128,11 @@ export default function ExportPage() {
           .map((p) => {
             const c = calcPayroll(p);
             return {
-              "Mes": monthName(p.month),
-              "Salario Base": p.baseSalary,
+              "Mês": monthName(p.month),
+              "Salário Base": p.baseSalary,
               "Home Office": p.homeOffice,
-              "Comissao": p.commission,
-              "Dias Uteis": p.workDays,
+              "Comissão": p.commission,
+              "Dias Úteis": p.workDays,
               "Dom/Feriados": p.sundaysHolidays,
               "DSR": c.dsr,
               "Total Bruto": c.grossTotal,
@@ -140,11 +140,11 @@ export default function ExportPage() {
               "Base IRRF": c.irrfBase,
               "IRRF": c.irrf,
               "Outros Desc.": p.otherDeductions,
-              "Total Liquido": c.netTotal,
+              "Total Líquido": c.netTotal,
             };
           });
         const ws6 = XLSX.utils.json_to_sheet(payRows);
-        XLSX.utils.book_append_sheet(wb, ws6, "Calculo Mensal");
+        XLSX.utils.book_append_sheet(wb, ws6, "Cálculo Mensal");
       }
 
       // Download
@@ -168,22 +168,22 @@ export default function ExportPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-orbi-cyan" />
-            Exportacao Completa
+            Exportação Completa
           </CardTitle>
           <CardDescription>
-            Gera um arquivo .xlsx com todas as abas: Contratos, Dashboard MRR, Reunioes, Produtos, Vendas e Calculo Mensal.
+            Gera um arquivo .xlsx com todas as abas: Contratos, Dashboard MRR, Reuniões, Produtos, Vendas e Cálculo Mensal.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="rounded-lg bg-muted p-4 space-y-2">
-              <p className="text-sm font-medium">O que sera exportado:</p>
+              <p className="text-sm font-medium">O que será exportado:</p>
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• {data.contracts.length} contratos</li>
-                <li>• {data.meetings.length} reunioes</li>
+                <li>• {data.meetings.length} reuniões</li>
                 <li>• {data.products.length} produtos</li>
                 <li>• {data.sales.length} vendas</li>
-                <li>• {data.payroll.length} meses de calculo</li>
+                <li>• {data.payroll.length} meses de cálculo</li>
               </ul>
             </div>
             <Button onClick={exportExcel} className="gap-2 w-full" size="lg" disabled={!hasData}>

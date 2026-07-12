@@ -239,8 +239,8 @@ export default function GoalsPage() {
                 <Users className="h-4 w-4 text-purple-400" />
               </div>
               <div>
-                <CardTitle className="text-base">Metas de Reunioes</CardTitle>
-                <CardDescription className="text-xs">Volume de reunioes e taxa de conversao</CardDescription>
+                <CardTitle className="text-base">Metas de Reuniões</CardTitle>
+                <CardDescription className="text-xs">Volume de reuniões e taxa de conversão</CardDescription>
               </div>
             </div>
             <Button
@@ -258,7 +258,7 @@ export default function GoalsPage() {
           {editingSection === "meetings" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-lg bg-muted/50 border border-border/50">
               <div className="space-y-2">
-                <Label className="text-xs">Reunioes por mes</Label>
+                <Label className="text-xs">Reuniões por mês</Label>
                 <Input
                   type="number"
                   value={meetingGoalMonthly || ""}
@@ -279,7 +279,7 @@ export default function GoalsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <MetricBox label="Meta mensal" value={`${meetingGoalMonthly} reunioes`} />
+              <MetricBox label="Meta mensal" value={`${meetingGoalMonthly} reuniões`} />
               <MetricBox label="Taxa alvo" value={percent(closeRateTarget)} />
               <MetricBox
                 label={`Realizadas (${shortMonthName(currentMonth)})`}
@@ -296,7 +296,7 @@ export default function GoalsPage() {
           )}
 
           <ProgressBar
-            label={`Reunioes ${shortMonthName(currentMonth)}`}
+            label={`Reuniões ${shortMonthName(currentMonth)}`}
             current={meetingsThisMonth}
             target={meetingGoalMonthly}
             format="number"
@@ -338,7 +338,7 @@ export default function GoalsPage() {
           {editingSection === "contracts" ? (
             <div className="p-4 rounded-lg bg-muted/50 border border-border/50">
               <div className="space-y-2 max-w-xs">
-                <Label className="text-xs">Novos contratos por mes</Label>
+                <Label className="text-xs">Novos contratos por mês</Label>
                 <Input
                   type="number"
                   value={newContractsMonthly || ""}
@@ -425,7 +425,7 @@ export default function GoalsPage() {
                       value={currency(salesRevenue)}
                       highlight={salesRevenue >= salesRevenueMonthly}
                     />
-                    <MetricBox label="Vendas no mes" value={`${salesThisMonth.length}`} />
+                    <MetricBox label="Vendas no mês" value={`${salesThisMonth.length}`} />
                   </div>
                   <ProgressBar
                     label={`Vendas ${shortMonthName(currentMonth)}`}

@@ -104,7 +104,7 @@ export default function DashboardPage() {
 
   // --- Alerts ---
   const overdueAlerts = meetings.filter((m) => meetingAlert(m) === "Retorno vencido");
-  const upcomingAlerts = meetings.filter((m) => meetingAlert(m) === "Retorno proximo");
+  const upcomingAlerts = meetings.filter((m) => meetingAlert(m) === "Retorno próximo");
 
   // --- Cross-module insights ---
   const concentration = clientConcentration(contracts);
@@ -129,7 +129,7 @@ export default function DashboardPage() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
           <p className="text-muted-foreground">
-            Visao geral — {periodLabel} {periodView !== "year" ? year : ""}
+            Visão geral — {periodLabel} {periodView !== "year" ? year : ""}
           </p>
         </div>
 
@@ -159,7 +159,7 @@ export default function DashboardPage() {
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 }`}
               >
-                {p === "month" ? "Mes" : p === "quarter" ? "Trimestre" : "Ano"}
+                {p === "month" ? "Mês" : p === "quarter" ? "Trimestre" : "Ano"}
               </button>
             ))}
           </div>
@@ -224,9 +224,9 @@ export default function DashboardPage() {
         />
         <ClickableStatCard
           href="/contracts"
-          title="MRR Proximo Ano"
+          title="MRR Próximo Ano"
           value={currency(mrrNext)}
-          description="Receita que transborda para o proximo ano"
+          description="Receita que transborda para o próximo ano"
           icon={<ArrowDownRight className="h-4 w-4 text-orbi-amber" />}
           bg="bg-orbi-amber/10"
         />
@@ -329,14 +329,14 @@ export default function DashboardPage() {
           value={churn.count > 0 ? currency(churn.mrrAtRisk) : "Seguro"}
           description={churn.count > 0
             ? `${churn.count} contrato(s) vencem — ${percent(churn.percentOfTotal)} do MRR`
-            : "Nenhum contrato vence nos proximos 90 dias"}
+            : "Nenhum contrato vence nos próximos 90 dias"}
           icon={<Shield className="h-4 w-4 text-orbi-rose" />}
           bg="bg-orbi-rose/10"
           highlight={churn.count > 0}
         />
         <ClickableStatCard
           href="/contracts"
-          title="Concentracao"
+          title="Concentração"
           value={topClient ? percent(topClient.percent) : "—"}
           description={topClient
             ? `${topClient.client} — Top 3 = ${percent(top3Pct)} do MRR`
@@ -347,7 +347,7 @@ export default function DashboardPage() {
         />
         <ClickableStatCard
           href="/payroll"
-          title="Comissao vs MRR"
+          title="Comissão vs MRR"
           value={commissionThisMonth > 0 ? currency(commissionThisMonth) : "—"}
           description={commissionThisMonth > 0 && periodMRR > 0
             ? `Ratio: ${percent(commissionThisMonth / (periodMRR * 12))} da receita anual`
@@ -434,7 +434,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>MRR por Tipo</CardTitle>
-                <CardDescription>Composicao da receita ativa</CardDescription>
+                <CardDescription>Composição da receita ativa</CardDescription>
               </div>
               <PieChartIcon className="h-4 w-4 text-muted-foreground" />
             </div>
@@ -484,8 +484,8 @@ export default function DashboardPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Concentracao de Clientes</CardTitle>
-                <CardDescription>Distribuicao do MRR por cliente — identifique riscos de dependencia</CardDescription>
+                <CardTitle>Concentração de Clientes</CardTitle>
+                <CardDescription>Distribuição do MRR por cliente — identifique riscos de dependência</CardDescription>
               </div>
               <Link href="/contracts">
                 <Button variant="ghost" size="sm" className="text-xs gap-1">
@@ -532,7 +532,7 @@ export default function DashboardPage() {
             <div className="space-y-2">
               {churn.contracts.map((c) => (
                 <Link key={c.id} href="/contracts" className="flex items-center justify-between rounded-lg bg-orbi-rose/10 px-4 py-2.5 hover:bg-orbi-rose/15 transition-colors">
-                  <span className="text-sm">{c.client} — contrato vence em breve ({currency(c.monthlyFee)}/mes)</span>
+                  <span className="text-sm">{c.client} — contrato vence em breve ({currency(c.monthlyFee)}/mês)</span>
                   <Badge variant="destructive">Churn Risk</Badge>
                 </Link>
               ))}
@@ -544,8 +544,8 @@ export default function DashboardPage() {
               ))}
               {upcomingAlerts.map((m) => (
                 <Link key={m.id} href="/meetings" className="flex items-center justify-between rounded-lg bg-orbi-amber/10 px-4 py-2.5 hover:bg-orbi-amber/15 transition-colors">
-                  <span className="text-sm">{m.clientLead} — retorno proximo</span>
-                  <Badge className="bg-orbi-amber text-black">Proximo</Badge>
+                  <span className="text-sm">{m.clientLead} — retorno próximo</span>
+                  <Badge className="bg-orbi-amber text-black">Próximo</Badge>
                 </Link>
               ))}
             </div>

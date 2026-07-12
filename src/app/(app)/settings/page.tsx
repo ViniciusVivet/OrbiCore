@@ -36,14 +36,14 @@ const THEMES: { key: ThemeKey; label: string; description: string; icon: React.R
 ];
 
 const ALL_MODULES: { key: ModuleKey; label: string; description: string }[] = [
-  { key: "dashboard", label: "Dashboard", description: "Painel principal com metricas e graficos" },
-  { key: "contracts", label: "Contratos", description: "Gestao de contratos e MRR" },
-  { key: "meetings", label: "Reunioes", description: "Pipeline de vendas e reunioes" },
-  { key: "goals", label: "Metas", description: "Definicao e acompanhamento de metas" },
-  { key: "products", label: "Produtos", description: "Catalogo e controle de estoque" },
-  { key: "sales", label: "Vendas", description: "Lancamento de vendas" },
-  { key: "payroll", label: "Calculo Mensal", description: "Simulacao de folha de pagamento" },
-  { key: "export", label: "Exportar", description: "Exportacao de dados para Excel" },
+  { key: "dashboard", label: "Dashboard", description: "Painel principal com métricas e gráficos" },
+  { key: "contracts", label: "Contratos", description: "Gestão de contratos e MRR" },
+  { key: "meetings", label: "Reuniões", description: "Pipeline de vendas e reuniões" },
+  { key: "goals", label: "Metas", description: "Definição e acompanhamento de metas" },
+  { key: "products", label: "Produtos", description: "Catálogo e controle de estoque" },
+  { key: "sales", label: "Vendas", description: "Lançamento de vendas" },
+  { key: "payroll", label: "Cálculo Mensal", description: "Simulação de folha de pagamento" },
+  { key: "export", label: "Exportar", description: "Exportação de dados para Excel" },
 ];
 
 export default function SettingsPage() {
@@ -73,7 +73,7 @@ export default function SettingsPage() {
 
   function handleSave() {
     updateProfile({ name, currentYear: year, enabledModules });
-    toast.success("Configuracoes salvas!");
+    toast.success("Configurações salvas!");
   }
 
   function handleReset() {
@@ -86,8 +86,8 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Configuracoes</h2>
-        <p className="text-muted-foreground">Gerencie seu perfil e preferencias</p>
+        <h2 className="text-2xl font-bold tracking-tight">Configurações</h2>
+        <p className="text-muted-foreground">Gerencie seu perfil e preferências</p>
       </div>
 
       <Card className="border-border/50">
@@ -96,7 +96,7 @@ export default function SettingsPage() {
             <Orbit className="h-5 w-5 text-orbi-cyan" />
             Perfil
           </CardTitle>
-          <CardDescription>Informacoes basicas do seu workspace</CardDescription>
+          <CardDescription>Informações básicas do seu workspace</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -122,7 +122,7 @@ export default function SettingsPage() {
             <Palette className="h-5 w-5 text-primary" />
             Tema
           </CardTitle>
-          <CardDescription>Escolha a aparencia do seu painel</CardDescription>
+          <CardDescription>Escolha a aparência do seu painel</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -170,7 +170,7 @@ export default function SettingsPage() {
             <Settings className="h-5 w-5 text-muted-foreground" />
             Modulos
           </CardTitle>
-          <CardDescription>Ative ou desative modulos do seu painel</CardDescription>
+          <CardDescription>Ative ou desative módulos do seu painel</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -203,7 +203,7 @@ export default function SettingsPage() {
           </div>
           <Button onClick={handleSave} className="gap-2 mt-4">
             <Save className="h-4 w-4" />
-            Salvar modulos
+            Salvar módulos
           </Button>
         </CardContent>
       </Card>
@@ -214,11 +214,11 @@ export default function SettingsPage() {
             <RotateCcw className="h-5 w-5" />
             Zona de Perigo
           </CardTitle>
-          <CardDescription>Acoes irreversiveis</CardDescription>
+          <CardDescription>Ações irreversíveis</CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Resetar todos os dados para o estado inicial. Essa acao nao pode ser desfeita.
+            Resetar todos os dados para o estado inicial. Essa ação não pode ser desfeita.
           </p>
           <Button variant="destructive" onClick={handleReset} className="gap-2">
             <RotateCcw className="h-4 w-4" />

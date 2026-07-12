@@ -97,14 +97,14 @@ export default function PayrollPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Calculo Mensal</h2>
-        <p className="text-muted-foreground">Simule salario, comissao, DSR e descontos — {year}</p>
+        <h2 className="text-2xl font-bold tracking-tight">Cálculo Mensal</h2>
+        <p className="text-muted-foreground">Simule salário, comissão, DSR e descontos — {year}</p>
       </div>
 
       <div className="flex items-center gap-2 p-1 bg-muted rounded-lg w-fit">
         <Badge variant="outline" className="border-orbi-amber text-orbi-amber">
           <AlertTriangle className="h-3 w-3 mr-1" />
-          Simulacao — valide com contador/DP
+          Simulação — valide com contador/DP
         </Badge>
       </div>
 
@@ -134,26 +134,26 @@ export default function PayrollPage() {
               <Calculator className="h-5 w-5 text-orbi-cyan" />
               {monthName(selectedMonth)} {year}
             </CardTitle>
-            <CardDescription>Preencha os valores. Home Office nao entra na base de INSS/IRRF.</CardDescription>
+            <CardDescription>Preencha os valores. Home Office não entra na base de INSS/IRRF.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Salario Base (R$)</Label>
+                <Label>Salário Base (R$)</Label>
                 <Input type="number" step="0.01" value={form.baseSalary || ""} onChange={(e) => setForm({ ...form, baseSalary: parseFloat(e.target.value) || 0 })} />
               </div>
               <div className="space-y-2">
-                <Label>Auxilio Home Office (R$)</Label>
+                <Label>Auxílio Home Office (R$)</Label>
                 <Input type="number" step="0.01" value={form.homeOffice || ""} onChange={(e) => setForm({ ...form, homeOffice: parseFloat(e.target.value) || 0 })} />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Comissao (R$)</Label>
+              <Label>Comissão (R$)</Label>
               <Input type="number" step="0.01" value={form.commission || ""} onChange={(e) => setForm({ ...form, commission: parseFloat(e.target.value) || 0 })} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Dias Uteis</Label>
+                <Label>Dias Úteis</Label>
                 <Input type="number" value={form.workDays || ""} onChange={(e) => setForm({ ...form, workDays: parseInt(e.target.value) || 0 })} />
               </div>
               <div className="space-y-2">
@@ -176,21 +176,21 @@ export default function PayrollPage() {
         <Card className="border-border/50">
           <CardHeader>
             <CardTitle>Resultado</CardTitle>
-            <CardDescription>Calculos automaticos baseados nas tabelas 2026</CardDescription>
+            <CardDescription>Cálculos automáticos baseados nas tabelas 2026</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <ResultRow label="DSR sobre Comissao" value={calc.dsr} />
+              <ResultRow label="DSR sobre Comissão" value={calc.dsr} />
               <ResultRow label="Total Bruto" value={calc.grossTotal} highlight />
               <div className="border-t border-border my-2" />
-              <ResultRow label="Base Tributavel (sem Home Office)" value={calc.taxableBase} muted />
+              <ResultRow label="Base Tributável (sem Home Office)" value={calc.taxableBase} muted />
               <ResultRow label="INSS" value={-calc.inss} negative />
               <ResultRow label="Base IRRF" value={calc.irrfBase} muted />
               <ResultRow label="IRRF" value={-calc.irrf} negative />
               {form.otherDeductions > 0 && <ResultRow label="Outros Descontos" value={-form.otherDeductions} negative />}
               <div className="border-t border-border my-2" />
               <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-orbi-emerald/10">
-                <span className="font-bold text-orbi-emerald">Total Liquido</span>
+                <span className="font-bold text-orbi-emerald">Total Líquido</span>
                 <span className="text-xl font-bold text-orbi-emerald">{currency(calc.netTotal)}</span>
               </div>
             </div>
@@ -202,7 +202,7 @@ export default function PayrollPage() {
                   <ResultRow label="Total Bruto" value={annualTotals.gross} />
                   <ResultRow label="Total INSS" value={-annualTotals.inss} negative />
                   <ResultRow label="Total IRRF" value={-annualTotals.irrf} negative />
-                  <ResultRow label="Total Liquido" value={annualTotals.net} highlight />
+                  <ResultRow label="Total Líquido" value={annualTotals.net} highlight />
                 </div>
               </div>
             )}

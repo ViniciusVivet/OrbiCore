@@ -147,7 +147,7 @@ export default function ContractsPage() {
         </Card>
         <Card className="border-border/50">
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Ticket Medio</p>
+            <p className="text-sm text-muted-foreground">Ticket Médio</p>
             <p className="text-2xl font-bold">
               {data.contracts.filter((c) => c.status === "Ativo").length > 0
                 ? currency(totalMRR / data.contracts.filter((c) => c.status === "Ativo").length)
@@ -172,8 +172,8 @@ export default function ContractsPage() {
         {concentration.length > 0 && (
           <Card className="border-border/50">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Concentracao de Clientes</CardTitle>
-              <CardDescription>Distribuicao do MRR — clientes em amarelo representam &gt;35%</CardDescription>
+              <CardTitle className="text-base">Concentração de Clientes</CardTitle>
+              <CardDescription>Distribuição do MRR — clientes em amarelo representam &gt;35%</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[200px]">
@@ -203,7 +203,7 @@ export default function ContractsPage() {
           <Card className="border-border/50">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Receita por Tipo</CardTitle>
-              <CardDescription>Composicao: Novo, Onboarding, Upsell, Cross-sell</CardDescription>
+              <CardDescription>Composição: Novo, Onboarding, Upsell, Cross-sell</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[200px] flex items-center justify-center">
@@ -273,13 +273,13 @@ export default function ContractsPage() {
                     <SortableHeader label="Data" sortKey={"saleDate" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} />
                     <SortableHeader label="Cliente" sortKey={"client" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} />
                     <SortableHeader label="Fee Mensal" sortKey={"monthlyFee" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-right" />
-                    <SortableHeader label="Duracao" sortKey={"durationMonths" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-center" />
+                    <SortableHeader label="Duração" sortKey={"durationMonths" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-center" />
                     <SortableHeader label="Meses Ano" sortKey={"mInYear" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-center" />
                     <SortableHeader label="MRR Ano" sortKey={"mrrYear" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-right" />
                     <SortableHeader label="MRR Prox" sortKey={"mrrNextYear" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-right" />
                     <SortableHeader label="Status" sortKey={"status" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-center" />
                     <SortableHeader label="Tipo" sortKey={"revenueType" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-center" />
-                    <th className="h-10 px-4 text-right text-sm font-medium text-muted-foreground">Acoes</th>
+                    <th className="h-10 px-4 text-right text-sm font-medium text-muted-foreground">Ações</th>
                   </tr>
                 </thead>
                 <TableBody>
@@ -340,7 +340,7 @@ export default function ContractsPage() {
                 <Input type="number" step="0.01" value={form.monthlyFee || ""} onChange={(e) => setForm({ ...form, monthlyFee: parseFloat(e.target.value) || 0 })} />
               </div>
               <div className="space-y-2">
-                <Label>Duracao (meses)</Label>
+                <Label>Duração (meses)</Label>
                 <Input type="number" value={form.durationMonths || ""} onChange={(e) => setForm({ ...form, durationMonths: parseInt(e.target.value) || 0 })} />
               </div>
             </div>

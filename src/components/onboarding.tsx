@@ -15,31 +15,31 @@ const STEPS: Step[] = [
   {
     target: "[data-tour='welcome']",
     title: "Bem-vindo ao OrbiCore!",
-    description: "Seu painel de gestao inteligente. Vamos fazer um tour rapido para voce entender como tudo funciona.",
+    description: "Seu painel de gestão inteligente. Vamos fazer um tour rápido para você entender como tudo funciona.",
     position: "bottom",
   },
   {
     target: "[data-tour='sidebar']",
-    title: "Menu de navegacao",
-    description: "Use o menu lateral para acessar cada modulo: contratos, reunioes, produtos, vendas, metas e mais.",
+    title: "Menu de navegação",
+    description: "Use o menu lateral para acessar cada módulo: contratos, reuniões, produtos, vendas, metas e mais.",
     position: "right",
   },
   {
     target: "[data-tour='filters']",
     title: "Filtros do dashboard",
-    description: "Filtre os dados por ano, mes ou trimestre. Tudo se atualiza em tempo real conforme voce muda.",
+    description: "Filtre os dados por ano, mês ou trimestre. Tudo se atualiza em tempo real conforme você muda.",
     position: "bottom",
   },
   {
     target: "[data-tour='kpi-cards']",
     title: "Cards interativos",
-    description: "Cada card mostra uma metrica importante e e clicavel — leva direto para a pagina com mais detalhes.",
+    description: "Cada card mostra uma métrica importante e é clicável — leva direto para a página com mais detalhes.",
     position: "bottom",
   },
   {
     target: "[data-tour='goal-bar']",
     title: "Acompanhe suas metas",
-    description: "Veja o progresso das metas e clique nos periodos para navegar entre ano, trimestre e mes.",
+    description: "Veja o progresso das metas e clique nos períodos para navegar entre ano, trimestre e mês.",
     position: "top",
   },
 ];
@@ -218,7 +218,7 @@ export function Onboarding() {
               Pular
             </Button>
             <Button size="sm" onClick={next} className="text-xs h-8 gap-1">
-              {step === STEPS.length - 1 ? "Comecar!" : "Proximo"}
+              {step === STEPS.length - 1 ? "Começar!" : "Próximo"}
               {step < STEPS.length - 1 && <ChevronRight className="h-3 w-3" />}
             </Button>
           </div>
