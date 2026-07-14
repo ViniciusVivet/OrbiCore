@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/cron?secret=orbicore-keepalive-2026-secret",
+      "path": "/api/cron",
       "schedule": "0 8 * * *"
     }
   ]

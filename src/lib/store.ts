@@ -1,94 +1,110 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { AppData, Contract, Meeting, Product, Sale, PayrollMonth, OrgProfile } from "./types";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { AppData, Contract, Meeting, Product, Sale, PayrollMonth, OrgProfile, SyncStatus } from "./types";
 import { SEED_DATA } from "./seed-data";
 import { createClient } from "./supabase/client";
 
-const STORAGE_KEY = "orbicore_data";
+const LEGACY_STORAGE_KEY = "orbicore_data";
+const storageKey = (userId: string) => `orbicore_data:${userId}`;
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
 // LocalStorage as fast cache
-function loadLocalCache(): AppData | null {
+function loadLocalCache(userId: string): AppData | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const key = storageKey(userId);
+    const raw = localStorage.getItem(key) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
     if (raw) return JSON.parse(raw);
   } catch {}
   return null;
 }
 
-function saveLocalCache(data: AppData) {
+function saveLocalCache(userId: string, data: AppData) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  localStorage.setItem(storageKey(userId), JSON.stringify(data));
 }
 
 // Supabase sync
-async function loadFromSupabase(): Promise<AppData | null> {
+async function loadFromSupabase(userId: string): Promise<AppData | null | undefined> {
   try {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
-
     const { data, error } = await supabase
       .from("app_data")
       .select("data")
-      .eq("user_id", user.id)
-      .single();
+      .eq("user_id", userId)
+      .maybeSingle();
 
-    if (error || !data) return null;
+    if (error) return undefined;
+    if (!data) return null;
     return data.data as AppData;
   } catch {
-    return null;
+    return undefined;
   }
 }
 
-async function saveToSupabase(appData: AppData) {
+async function saveToSupabase(userId: string, appData: AppData): Promise<boolean> {
   try {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    await supabase
+    const { error } = await supabase
       .from("app_data")
       .upsert({
-        user_id: user.id,
+        user_id: userId,
         data: appData,
         updated_at: new Date().toISOString(),
       }, {
         onConflict: "user_id",
       });
+    return !error;
   } catch {
-    // Fail silently — localStorage still has the data
+    return false;
   }
 }
 
 export function useStore() {
   const [data, setData] = useState<AppData>(SEED_DATA);
   const [loaded, setLoaded] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>("loading");
+  const userIdRef = useRef<string | null>(null);
+  const saveQueueRef = useRef(Promise.resolve());
 
   useEffect(() => {
     async function init() {
-      // 1. Load local cache instantly (fast)
-      const cached = loadLocalCache();
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setSyncStatus("offline");
+        setLoaded(true);
+        return;
+      }
+      userIdRef.current = user.id;
+
+      // O cache é isolado por usuário. A chave antiga só serve como migração.
+      const cached = loadLocalCache(user.id);
       if (cached) setData(cached);
 
-      // 2. Try Supabase (source of truth)
-      const remote = await loadFromSupabase();
+      const remote = await loadFromSupabase(user.id);
       if (remote) {
         setData(remote);
-        saveLocalCache(remote);
+        saveLocalCache(user.id, remote);
+        localStorage.removeItem(LEGACY_STORAGE_KEY);
+        setSyncStatus("synced");
+      } else if (remote === undefined) {
+        // Falha de rede/servidor: nunca sobrescreve o remoto com cache possivelmente antigo.
+        setSyncStatus(navigator.onLine ? "error" : "offline");
       } else if (!cached) {
-        // First time user — seed with defaults
         setData(SEED_DATA);
-        saveLocalCache(SEED_DATA);
-        saveToSupabase(SEED_DATA);
+        saveLocalCache(user.id, SEED_DATA);
+        const saved = await saveToSupabase(user.id, SEED_DATA);
+        setSyncStatus(saved ? "synced" : "offline");
       } else {
-        // Has local cache but no remote — push to Supabase
-        saveToSupabase(cached);
+        saveLocalCache(user.id, cached);
+        const saved = await saveToSupabase(user.id, cached);
+        if (saved) localStorage.removeItem(LEGACY_STORAGE_KEY);
+        setSyncStatus(saved ? "synced" : "offline");
       }
 
       setLoaded(true);
@@ -100,8 +116,15 @@ export function useStore() {
   const update = useCallback((updater: (prev: AppData) => AppData) => {
     setData((prev) => {
       const next = updater(prev);
-      saveLocalCache(next);
-      saveToSupabase(next);
+      const userId = userIdRef.current;
+      if (userId) {
+        saveLocalCache(userId, next);
+        setSyncStatus("saving");
+        saveQueueRef.current = saveQueueRef.current.then(async () => {
+          const saved = await saveToSupabase(userId, next);
+          setSyncStatus(saved ? "synced" : navigator.onLine ? "error" : "offline");
+        });
+      }
       return next;
     });
   }, []);
@@ -201,21 +224,21 @@ export function useStore() {
 
   // --- Reset ---
   const resetData = useCallback(() => {
-    saveLocalCache(SEED_DATA);
-    saveToSupabase(SEED_DATA);
-    setData(SEED_DATA);
-  }, []);
+    update(() => SEED_DATA);
+  }, [update]);
 
   // --- Logout ---
   const logout = useCallback(async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    localStorage.removeItem(STORAGE_KEY);
+    if (userIdRef.current) localStorage.removeItem(storageKey(userIdRef.current));
+    userIdRef.current = null;
   }, []);
 
   return {
     data,
     loaded,
+    syncStatus,
     updateProfile,
     addContract,
     updateContract,

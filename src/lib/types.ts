@@ -122,8 +122,9 @@ export interface OrgProfile {
   closeRateTarget?: number;
   newContractsMonthly?: number;
   salesRevenueMonthly?: number;
-  [key: string]: unknown;
 }
+
+export type SyncStatus = "loading" | "synced" | "saving" | "offline" | "error";
 
 // --- Store ---
 export interface AppData {

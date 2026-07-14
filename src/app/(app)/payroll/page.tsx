@@ -42,7 +42,7 @@ export default function PayrollPage() {
         });
       }
     }
-  }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loaded]);
 
   if (!loaded) return null;
 

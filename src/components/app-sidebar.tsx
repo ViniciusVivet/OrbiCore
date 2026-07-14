@@ -101,12 +101,6 @@ export function AppSidebar() {
     router.refresh();
   }
 
-  function cycleTheme() {
-    const idx = THEME_CYCLE.indexOf(theme);
-    const next = THEME_CYCLE[(idx + 1) % THEME_CYCLE.length];
-    setTheme(next);
-  }
-
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">

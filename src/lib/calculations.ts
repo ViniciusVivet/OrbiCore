@@ -1,12 +1,19 @@
 import { Contract, PayrollMonth, Meeting, Product, Sale } from "./types";
 
+/** Interpreta datas de negócio sem deslocamento de dia por fuso horário. */
+export function parseLocalDate(value: string): Date {
+  const [year, month, day] = value.slice(0, 10).split("-").map(Number);
+  if (year && month && day) return new Date(year, month - 1, day);
+  return new Date(value);
+}
+
 // =============================================
 // MRR Calculations
 // =============================================
 
 /** Meses do contrato que caem no ano especificado */
 export function monthsInYear(saleDate: string, durationMonths: number, year: number): number {
-  const d = new Date(saleDate);
+  const d = parseLocalDate(saleDate);
   const startYear = d.getFullYear();
   const startMonth = d.getMonth() + 1; // 1-based
 
@@ -27,7 +34,7 @@ export function monthsNextYear(saleDate: string, durationMonths: number, year: n
 export function mrrInMonth(contracts: Contract[], year: number, month: number, statusFilter?: string): number {
   return contracts
     .filter((c) => {
-      const d = new Date(c.saleDate);
+      const d = parseLocalDate(c.saleDate);
       const matchDate = d.getFullYear() === year && d.getMonth() + 1 === month;
       const matchStatus = !statusFilter || statusFilter === "Todos" || c.status === statusFilter;
       return matchDate && matchStatus;
@@ -92,13 +99,13 @@ export function mrrChartData(contracts: Contract[], year: number, statusFilter?:
     // MRR acumulado real = soma fee * meses que ja passaram no ano ate esse mes
     const accReal = contracts
       .filter((c) => {
-        const d = new Date(c.saleDate);
+        const d = parseLocalDate(c.saleDate);
         const matchStatus = !statusFilter || statusFilter === "Todos" || c.status === statusFilter;
-        return d <= new Date(year, month - 1, 28) && matchStatus;
+        return d <= new Date(year, month, 0) && matchStatus;
       })
       .reduce((sum, c) => {
         const mInYear = monthsInYear(c.saleDate, c.durationMonths, year);
-        const d = new Date(c.saleDate);
+        const d = parseLocalDate(c.saleDate);
         const contractStartMonth = d.getFullYear() === year ? d.getMonth() + 1 : 1;
         const monthsCounted = Math.max(0, Math.min(month, contractStartMonth + mInYear - 1) - Math.max(contractStartMonth, 1) + 1);
         return sum + c.monthlyFee * monthsCounted;
@@ -121,14 +128,19 @@ export function mrrChartData(contracts: Contract[], year: number, statusFilter?:
 export function clientConcentration(contracts: Contract[]) {
   const active = contracts.filter((c) => c.status === "Ativo");
   const totalMRR = active.reduce((s, c) => s + c.monthlyFee, 0);
-  const sorted = [...active].sort((a, b) => b.monthlyFee - a.monthlyFee);
+  const grouped = active.reduce<Record<string, number>>((clients, contract) => {
+    const client = contract.client.trim() || "Sem cliente";
+    clients[client] = (clients[client] ?? 0) + contract.monthlyFee;
+    return clients;
+  }, {});
+  const sorted = Object.entries(grouped).sort((a, b) => b[1] - a[1]);
   let cumulative = 0;
-  return sorted.map((c) => {
-    cumulative += c.monthlyFee;
+  return sorted.map(([client, mrr]) => {
+    cumulative += mrr;
     return {
-      client: c.client,
-      mrr: c.monthlyFee,
-      percent: totalMRR > 0 ? c.monthlyFee / totalMRR : 0,
+      client,
+      mrr,
+      percent: totalMRR > 0 ? mrr / totalMRR : 0,
       cumulativePercent: totalMRR > 0 ? cumulative / totalMRR : 0,
     };
   });
@@ -146,11 +158,12 @@ export function mrrByRevenueType(contracts: Contract[]) {
 
 /** Risco de churn — contratos que vencem nos proximos N meses */
 export function churnRisk(contracts: Contract[], year: number, withinMonths = 3) {
-  const now = new Date();
+  const current = new Date();
+  const now = current.getFullYear() === year ? current : new Date(year, 0, 1);
   const active = contracts.filter((c) => c.status === "Ativo");
   const totalMRR = active.reduce((s, c) => s + c.monthlyFee, 0);
   const atRisk = active.filter((c) => {
-    const start = new Date(c.saleDate);
+    const start = parseLocalDate(c.saleDate);
     const end = new Date(start);
     end.setMonth(end.getMonth() + c.durationMonths);
     const diffDays = (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
@@ -241,7 +254,7 @@ export function meetingAlert(meeting: Meeting): string {
   if (meeting.status === "Perdida") return "Perdida";
   if (!meeting.nextReturnDate) return "Sem retorno";
   const diff = Math.floor(
-    (new Date(meeting.nextReturnDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+    (parseLocalDate(meeting.nextReturnDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
   );
   if (diff < 0) return "Retorno vencido";
   if (diff <= 3) return "Retorno próximo";

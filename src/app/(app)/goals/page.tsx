@@ -6,27 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Target, Save, TrendingUp, Users, ShoppingCart, FileText, Pencil, Check } from "lucide-react";
+import { Save, TrendingUp, Users, ShoppingCart, FileText, Pencil, Check } from "lucide-react";
 import { useAppStore } from "@/components/store-provider";
 import { currency, percent, shortMonthName, monthName } from "@/lib/format";
 import { mrrInMonth, mrrInQuarter, mrrEnteringYear, activeContractsCount, weightedPipelineRevenue } from "@/lib/calculations";
 import { toast } from "sonner";
-
-interface GoalSection {
-  key: string;
-  label: string;
-  icon: React.ReactNode;
-  color: string;
-  fields: GoalField[];
-}
-
-interface GoalField {
-  key: string;
-  label: string;
-  type: "currency" | "number" | "percent";
-  getValue: () => number;
-  description?: string;
-}
 
 export default function GoalsPage() {
   const { data, loaded, updateProfile } = useAppStore();
@@ -44,12 +28,10 @@ export default function GoalsPage() {
       const p = data.profile;
       setYearlyGoal(p.yearlyGoal);
       setSelectedYear(p.currentYear);
-      // Load extended goals from profile (stored as extra fields)
-      const ext = (p as Record<string, unknown>);
-      setMeetingGoalMonthly((ext.meetingGoalMonthly as number) ?? 20);
-      setCloseRateTarget((ext.closeRateTarget as number) ?? 0.25);
-      setNewContractsMonthly((ext.newContractsMonthly as number) ?? 3);
-      setSalesRevenueMonthly((ext.salesRevenueMonthly as number) ?? 10000);
+      setMeetingGoalMonthly(p.meetingGoalMonthly ?? 20);
+      setCloseRateTarget(p.closeRateTarget ?? 0.25);
+      setNewContractsMonthly(p.newContractsMonthly ?? 3);
+      setSalesRevenueMonthly(p.salesRevenueMonthly ?? 10000);
     }
   }, [loaded, data.profile]);
 
@@ -70,7 +52,7 @@ export default function GoalsPage() {
       closeRateTarget,
       newContractsMonthly,
       salesRevenueMonthly,
-    } as Record<string, unknown>);
+    });
     setEditingSection(null);
     setSaved(true);
     toast.success("Metas salvas com sucesso!");

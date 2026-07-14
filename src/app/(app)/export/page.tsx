@@ -15,9 +15,19 @@ export default function ExportPage() {
 
   async function exportExcel() {
     try {
-      const XLSX = await import("xlsx");
-      const wb = XLSX.utils.book_new();
+      const ExcelJS = await import("exceljs");
+      const wb = new ExcelJS.Workbook();
       const year = data.profile.currentYear;
+      const addSheet = (name: string, rows: Record<string, unknown>[]) => {
+        if (rows.length === 0) return;
+        const worksheet = wb.addWorksheet(name);
+        worksheet.columns = Object.keys(rows[0]).map((header) => ({
+          header, key: header, width: Math.max(14, Math.min(36, header.length + 4)),
+        }));
+        worksheet.addRows(rows);
+        worksheet.views = [{ state: "frozen", ySplit: 1 }];
+        worksheet.getRow(1).font = { bold: true };
+      };
 
       // --- Contratos ---
       const contractRows = data.contracts.map((c) => {
@@ -39,10 +49,7 @@ export default function ExportPage() {
           "Upsell/Cross-sell": c.upsellCrossSellValue,
         };
       });
-      if (contractRows.length > 0) {
-        const ws1 = XLSX.utils.json_to_sheet(contractRows);
-        XLSX.utils.book_append_sheet(wb, ws1, "Contratos");
-      }
+      addSheet("Contratos", contractRows);
 
       // --- Dashboard MRR ---
       const dashRows = Array.from({ length: 12 }, (_, i) => {
@@ -54,8 +61,7 @@ export default function ExportPage() {
       });
       const mrrTotal = mrrEnteringYear(data.contracts, year, "Ativo");
       dashRows.push({ "Mês": "TOTAL", "MRR Vendido": mrrTotal });
-      const ws2 = XLSX.utils.json_to_sheet(dashRows);
-      XLSX.utils.book_append_sheet(wb, ws2, "Dashboard MRR");
+      addSheet("Dashboard MRR", dashRows);
 
       // --- Reunioes ---
       if (data.meetings.length > 0) {
@@ -73,8 +79,7 @@ export default function ExportPage() {
           "Alerta": meetingAlert(m),
           "Observações": m.notes || "",
         }));
-        const ws3 = XLSX.utils.json_to_sheet(meetRows);
-        XLSX.utils.book_append_sheet(wb, ws3, "Reuniões");
+        addSheet("Reuniões", meetRows);
       }
 
       // --- Produtos ---
@@ -96,8 +101,7 @@ export default function ExportPage() {
             "Status": stock <= p.minStock ? "REPOR" : "OK",
           };
         });
-        const ws4 = XLSX.utils.json_to_sheet(prodRows);
-        XLSX.utils.book_append_sheet(wb, ws4, "Produtos");
+        addSheet("Produtos", prodRows);
       }
 
       // --- Vendas ---
@@ -117,8 +121,7 @@ export default function ExportPage() {
             "Margem": Math.round(margin * 100) + "%",
           };
         });
-        const ws5 = XLSX.utils.json_to_sheet(saleRows);
-        XLSX.utils.book_append_sheet(wb, ws5, "Vendas");
+        addSheet("Vendas", saleRows);
       }
 
       // --- Calculo Mensal ---
@@ -143,12 +146,18 @@ export default function ExportPage() {
               "Total Líquido": c.netTotal,
             };
           });
-        const ws6 = XLSX.utils.json_to_sheet(payRows);
-        XLSX.utils.book_append_sheet(wb, ws6, "Cálculo Mensal");
+        addSheet("Cálculo Mensal", payRows);
       }
 
       // Download
-      XLSX.writeFile(wb, `OrbiCore_${data.profile.name}_${year}.xlsx`);
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `OrbiCore_${data.profile.name}_${year}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
       toast.success("Excel exportado com sucesso!");
     } catch {
       toast.error("Erro ao exportar Excel");
