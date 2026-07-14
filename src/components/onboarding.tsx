@@ -60,13 +60,28 @@ export function Onboarding() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!active) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [active]);
+
   const updateSpotlight = useCallback(() => {
     if (!active) return;
     const currentStep = STEPS[step];
     if (!currentStep) return;
 
-    const el = document.querySelector(currentStep.target);
+    const isMobile = window.innerWidth < 768;
+    const target = isMobile && currentStep.target === "[data-tour='sidebar']"
+      ? "[data-tour='mobile-menu']"
+      : currentStep.target;
+    const el = document.querySelector(target);
     if (el) {
+      const initialRect = el.getBoundingClientRect();
+      if (initialRect.top < 16 || initialRect.bottom > window.innerHeight - (isMobile ? 250 : 16)) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
       const rect = el.getBoundingClientRect();
       setSpotlightRect(rect);
     } else {
@@ -77,7 +92,11 @@ export function Onboarding() {
   useEffect(() => {
     updateSpotlight();
     window.addEventListener("resize", updateSpotlight);
-    return () => window.removeEventListener("resize", updateSpotlight);
+    window.addEventListener("scroll", updateSpotlight, true);
+    return () => {
+      window.removeEventListener("resize", updateSpotlight);
+      window.removeEventListener("scroll", updateSpotlight, true);
+    };
   }, [updateSpotlight]);
 
   function finish() {
@@ -101,10 +120,17 @@ export function Onboarding() {
 
   const currentStep = STEPS[step];
   const pad = 8;
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
 
   // Tooltip position
   let tooltipStyle: React.CSSProperties = {};
-  if (spotlightRect) {
+  if (isMobile) {
+    tooltipStyle = {
+      left: 12,
+      right: 12,
+      bottom: "max(12px, env(safe-area-inset-bottom))",
+    };
+  } else if (spotlightRect) {
     const pos = currentStep.position;
     if (pos === "bottom") {
       tooltipStyle = {
@@ -181,7 +207,7 @@ export function Onboarding() {
 
       {/* Tooltip card */}
       <div
-        className="absolute z-10 w-[320px] rounded-xl border border-border bg-card p-5 shadow-2xl"
+        className="absolute z-10 w-auto max-w-none rounded-xl border border-border bg-card p-4 shadow-2xl sm:w-[320px] sm:max-w-[320px] sm:p-5"
         style={tooltipStyle}
       >
         {/* Step indicator */}
@@ -192,7 +218,7 @@ export function Onboarding() {
               {step + 1} de {STEPS.length}
             </span>
           </div>
-          <button onClick={skip} className="text-muted-foreground hover:text-foreground transition-colors">
+          <button onClick={skip} aria-label="Fechar tutorial" className="-m-2 flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -201,7 +227,7 @@ export function Onboarding() {
         <p className="text-sm text-muted-foreground leading-relaxed mb-4">{currentStep.description}</p>
 
         {/* Progress dots */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex gap-1.5">
             {STEPS.map((_, i) => (
               <div
@@ -213,11 +239,11 @@ export function Onboarding() {
             ))}
           </div>
 
-          <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={skip} className="text-xs h-8">
+          <div className="flex shrink-0 gap-1 sm:gap-2">
+            <Button variant="ghost" size="sm" onClick={skip} className="h-10 px-2 text-xs sm:h-8">
               Pular
             </Button>
-            <Button size="sm" onClick={next} className="text-xs h-8 gap-1">
+            <Button size="sm" onClick={next} className="h-10 gap-1 px-3 text-xs sm:h-8">
               {step === STEPS.length - 1 ? "Começar!" : "Próximo"}
               {step < STEPS.length - 1 && <ChevronRight className="h-3 w-3" />}
             </Button>

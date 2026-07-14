@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Settings, Save, RotateCcw, Orbit, Check, Moon, Sun, Sparkles, Palette } from "lucide-react";
+import { Settings, Save, RotateCcw, Orbit, Check, Moon, Sun, Sparkles, Palette, GraduationCap } from "lucide-react";
 import { useAppStore } from "@/components/store-provider";
 import { useTheme, ThemeKey } from "@/components/theme-provider";
 import { toast } from "sonner";
@@ -81,6 +81,11 @@ export default function SettingsPage() {
       resetData();
       toast.success("Dados resetados!");
     }
+  }
+
+  function restartTutorial() {
+    localStorage.removeItem("orbicore_onboarding_done");
+    window.location.assign("/dashboard");
   }
 
   return (
@@ -204,6 +209,22 @@ export default function SettingsPage() {
           <Button onClick={handleSave} className="gap-2 mt-4">
             <Save className="h-4 w-4" />
             Salvar módulos
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <GraduationCap className="h-5 w-5 text-orbi-cyan" />
+            Tutorial
+          </CardTitle>
+          <CardDescription>Veja novamente o passo a passo do painel.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" onClick={restartTutorial} className="min-h-11 w-full gap-2 sm:w-auto">
+            <GraduationCap className="h-4 w-4" />
+            Refazer tutorial
           </Button>
         </CardContent>
       </Card>
