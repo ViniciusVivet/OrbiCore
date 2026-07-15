@@ -9,6 +9,7 @@ interface Step {
   title: string;
   description: string;
   position: "bottom" | "right" | "left" | "top";
+  optional?: boolean;
 }
 
 const STEPS: Step[] = [
@@ -17,6 +18,13 @@ const STEPS: Step[] = [
     title: "Bem-vindo ao OrbiCore!",
     description: "Seu painel de gestão inteligente. Vamos fazer um tour rápido para você entender como tudo funciona.",
     position: "bottom",
+  },
+  {
+    target: "[data-tour='dashboard-customize']",
+    title: "Um painel do seu jeito",
+    description: "Escolha quais blocos quer ver e mude a ordem. Cada negócio pode montar uma visão diferente.",
+    position: "bottom",
+    optional: true,
   },
   {
     target: "[data-tour='sidebar']",
@@ -106,7 +114,9 @@ export function Onboarding() {
 
   function next() {
     if (step < STEPS.length - 1) {
-      setStep(step + 1);
+      let nextStep = step + 1;
+      while (nextStep < STEPS.length - 1 && STEPS[nextStep].optional && !document.querySelector(STEPS[nextStep].target)) nextStep++;
+      setStep(nextStep);
     } else {
       finish();
     }

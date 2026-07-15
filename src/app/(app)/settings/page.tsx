@@ -83,6 +83,12 @@ export default function SettingsPage() {
     }
   }
 
+  function applyPreset(preset: "services" | "store" | "complete") {
+    if (preset === "services") setEnabledModules(["dashboard", "contracts", "meetings", "goals", "payroll", "export"]);
+    if (preset === "store") setEnabledModules(["dashboard", "products", "sales", "goals", "export"]);
+    if (preset === "complete") setEnabledModules(ALL_MODULES.map((module) => module.key));
+  }
+
   function restartTutorial() {
     localStorage.removeItem("orbicore_onboarding_done");
     window.location.assign("/dashboard");
@@ -178,6 +184,11 @@ export default function SettingsPage() {
           <CardDescription>Ative ou desative módulos do seu painel</CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 grid grid-cols-3 gap-2" data-tour="module-presets">
+            <Button type="button" variant="outline" className="min-h-11 px-2 text-xs sm:text-sm" onClick={() => applyPreset("services")}>Serviços</Button>
+            <Button type="button" variant="outline" className="min-h-11 px-2 text-xs sm:text-sm" onClick={() => applyPreset("store")}>Loja</Button>
+            <Button type="button" variant="outline" className="min-h-11 px-2 text-xs sm:text-sm" onClick={() => applyPreset("complete")}>Completo</Button>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {ALL_MODULES.map((mod) => {
               const isEnabled = enabledModules.includes(mod.key);

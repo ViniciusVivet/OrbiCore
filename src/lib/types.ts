@@ -76,6 +76,26 @@ export interface Sale {
   createdAt: string;
 }
 
+export type StockMovementType = "Entrada" | "Baixa" | "Ajuste";
+
+export interface StockMovement {
+  id: string;
+  productId: string;
+  date: string;
+  type: StockMovementType;
+  quantity: number;
+  unitCost?: number;
+  note?: string;
+  createdAt: string;
+}
+
+export type DashboardWidgetKey =
+  | "inventory-summary"
+  | "stock-levels"
+  | "sales-summary"
+  | "sales-by-product"
+  | "recent-movements";
+
 // --- Calculo Mensal ---
 export interface PayrollMonth {
   id: string;
@@ -122,6 +142,7 @@ export interface OrgProfile {
   closeRateTarget?: number;
   newContractsMonthly?: number;
   salesRevenueMonthly?: number;
+  dashboardWidgets?: DashboardWidgetKey[];
 }
 
 export type SyncStatus = "loading" | "synced" | "saving" | "offline" | "error";
@@ -133,6 +154,7 @@ export interface AppData {
   meetings: Meeting[];
   products: Product[];
   sales: Sale[];
+  stockMovements: StockMovement[];
   payroll: PayrollMonth[];
   goals: Goal[];
 }

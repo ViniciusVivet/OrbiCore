@@ -12,8 +12,9 @@ import { Plus, Trash2, ShoppingCart, TrendingUp, DollarSign, BarChart3, ArrowRig
 import Link from "next/link";
 import { useAppStore } from "@/components/store-provider";
 import { currency, dateFormat, percent } from "@/lib/format";
-import { saleProfitAndMargin } from "@/lib/calculations";
+import { saleProfitAndMargin, productStock } from "@/lib/calculations";
 import { Sale } from "@/lib/types";
+import { toast } from "sonner";
 
 type FormData = Omit<Sale, "id" | "createdAt">;
 
@@ -28,7 +29,7 @@ export default function SalesPage() {
 
   if (!loaded) return null;
 
-  const { products, sales } = data;
+  const { products, sales, stockMovements } = data;
 
   const salesWithProduct = sales.map((s) => {
     const product = products.find((p) => p.id === s.productId);
@@ -55,18 +56,23 @@ export default function SalesPage() {
 
   function handleSave() {
     if (!form.productId || !form.quantity) return;
+    const product = products.find((item) => item.id === form.productId);
+    if (!product || form.quantity > productStock(product, sales, stockMovements)) {
+      toast.error("Quantidade maior que o estoque disponível.");
+      return;
+    }
     addSale(form);
     setDialogOpen(false);
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Vendas</h2>
           <p className="text-muted-foreground">Registre vendas e acompanhe receita e lucro</p>
         </div>
-        <Button onClick={openNew} className="gap-2" disabled={products.length === 0}>
+        <Button onClick={openNew} className="min-h-11 w-full gap-2 sm:w-auto" disabled={products.length === 0}>
           <Plus className="h-4 w-4" />Nova Venda
         </Button>
       </div>
@@ -137,7 +143,18 @@ export default function SalesPage() {
                 <Button onClick={openNew} className="mt-4 gap-2"><Plus className="h-4 w-4" />Registrar venda</Button>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              <div className="grid gap-3 p-3 md:hidden">
+                {salesWithProduct.map(({ sale, product }) => {
+                  if (!product) return null;
+                  const { revenue, profit, margin } = saleProfitAndMargin(sale, product);
+                  return <article key={sale.id} className="rounded-xl border border-border/60 p-4">
+                    <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate font-semibold">{product.name}</h3><p className="text-xs text-muted-foreground">{dateFormat(sale.date)} · {sale.quantity} un.</p></div><Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" aria-label={`Excluir venda de ${product.name}`} onClick={() => deleteSale(sale.id)}><Trash2 className="h-4 w-4 text-orbi-rose" /></Button></div>
+                    <div className="mt-3 grid grid-cols-3 gap-2"><SaleMetric label="Receita" value={currency(revenue)} /><SaleMetric label="Lucro" value={currency(profit)} positive /><SaleMetric label="Margem" value={percent(margin, 0)} /></div>
+                  </article>;
+                })}
+              </div>
+              <div className="hidden overflow-x-auto md:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -177,6 +194,7 @@ export default function SalesPage() {
                   </TableBody>
                 </Table>
               </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -228,4 +246,8 @@ export default function SalesPage() {
       </Dialog>
     </div>
   );
+}
+
+function SaleMetric({ label, value, positive = false }: { label: string; value: string; positive?: boolean }) {
+  return <div className="rounded-lg bg-muted/60 p-2.5"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p><p className={`mt-0.5 truncate text-sm font-semibold ${positive ? "text-orbi-emerald" : ""}`}>{value}</p></div>;
 }

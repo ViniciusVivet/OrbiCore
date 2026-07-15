@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { AppData, Contract, Meeting, Product, Sale, PayrollMonth, OrgProfile, SyncStatus } from "./types";
+import { AppData, Contract, Meeting, Product, Sale, StockMovement, PayrollMonth, OrgProfile, SyncStatus } from "./types";
 import { SEED_DATA } from "./seed-data";
 import { createClient } from "./supabase/client";
 
@@ -12,13 +12,17 @@ function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
+function normalizeData(data: AppData): AppData {
+  return { ...SEED_DATA, ...data, stockMovements: data.stockMovements ?? [] };
+}
+
 // LocalStorage as fast cache
 function loadLocalCache(userId: string): AppData | null {
   if (typeof window === "undefined") return null;
   try {
     const key = storageKey(userId);
     const raw = localStorage.getItem(key) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) return normalizeData(JSON.parse(raw) as AppData);
   } catch {}
   return null;
 }
@@ -40,7 +44,7 @@ async function loadFromSupabase(userId: string): Promise<AppData | null | undefi
 
     if (error) return undefined;
     if (!data) return null;
-    return data.data as AppData;
+    return normalizeData(data.data as AppData);
   } catch {
     return undefined;
   }
@@ -203,6 +207,22 @@ export function useStore() {
     update((d) => ({ ...d, sales: d.sales.filter((x) => x.id !== id) }));
   }, [update]);
 
+  // --- Stock movements ---
+  const addStockMovement = useCallback((movement: Omit<StockMovement, "id" | "createdAt">) => {
+    update((d) => ({
+      ...d,
+      stockMovements: [...(d.stockMovements ?? []), {
+        ...movement,
+        id: generateId(),
+        createdAt: new Date().toISOString(),
+      }],
+    }));
+  }, [update]);
+
+  const deleteStockMovement = useCallback((id: string) => {
+    update((d) => ({ ...d, stockMovements: (d.stockMovements ?? []).filter((x) => x.id !== id) }));
+  }, [update]);
+
   // --- Payroll ---
   const upsertPayroll = useCallback((p: Omit<PayrollMonth, "id" | "createdAt">) => {
     update((d) => {
@@ -251,6 +271,8 @@ export function useStore() {
     deleteProduct,
     addSale,
     deleteSale,
+    addStockMovement,
+    deleteStockMovement,
     upsertPayroll,
     resetData,
     logout,

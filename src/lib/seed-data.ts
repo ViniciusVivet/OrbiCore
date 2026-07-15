@@ -234,6 +234,7 @@ export const SEED_DATA: AppData = {
       createdAt: "2026-04-05T00:00:00Z",
     },
   ],
+  stockMovements: [],
   payroll: [
     {
       id: "p1",

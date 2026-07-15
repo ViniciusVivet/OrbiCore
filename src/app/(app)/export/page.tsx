@@ -85,7 +85,7 @@ export default function ExportPage() {
       // --- Produtos ---
       if (data.products.length > 0) {
         const prodRows = data.products.map((p) => {
-          const stock = productStock(p, data.sales);
+          const stock = productStock(p, data.sales, data.stockMovements);
           const profit = p.salePrice - p.costPrice;
           const margin = p.salePrice > 0 ? profit / p.salePrice : 0;
           return {
@@ -122,6 +122,19 @@ export default function ExportPage() {
           };
         });
         addSheet("Vendas", saleRows);
+      }
+
+      // --- Movimentações de estoque ---
+      if (data.stockMovements.length > 0) {
+        const movementRows = data.stockMovements.map((movement) => ({
+          "Data": dateFormat(movement.date),
+          "Produto": data.products.find((product) => product.id === movement.productId)?.name ?? "Produto removido",
+          "Tipo": movement.type,
+          "Quantidade": movement.quantity,
+          "Custo Unitário": movement.unitCost ?? 0,
+          "Observação": movement.note ?? "",
+        }));
+        addSheet("Movimentações", movementRows);
       }
 
       // --- Calculo Mensal ---

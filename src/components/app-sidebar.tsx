@@ -34,22 +34,23 @@ import { useAppStore } from "@/components/store-provider";
 import { useTheme, ThemeKey } from "@/components/theme-provider";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ModuleKey } from "@/lib/types";
 
 const mainNav = [
-  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { title: "Contratos", href: "/contracts", icon: FileText },
-  { title: "Reuniões", href: "/meetings", icon: Users },
-  { title: "Metas", href: "/goals", icon: Target },
+  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, module: "dashboard" as ModuleKey },
+  { title: "Contratos", href: "/contracts", icon: FileText, module: "contracts" as ModuleKey },
+  { title: "Reuniões", href: "/meetings", icon: Users, module: "meetings" as ModuleKey },
+  { title: "Metas", href: "/goals", icon: Target, module: "goals" as ModuleKey },
 ];
 
 const operationsNav = [
-  { title: "Produtos", href: "/products", icon: Package },
-  { title: "Vendas", href: "/sales", icon: ShoppingCart },
+  { title: "Produtos", href: "/products", icon: Package, module: "products" as ModuleKey },
+  { title: "Vendas", href: "/sales", icon: ShoppingCart, module: "sales" as ModuleKey },
 ];
 
 const toolsNav = [
-  { title: "Cálculo Mensal", href: "/payroll", icon: Calculator },
-  { title: "Exportar Excel", href: "/export", icon: FileSpreadsheet },
+  { title: "Cálculo Mensal", href: "/payroll", icon: Calculator, module: "payroll" as ModuleKey },
+  { title: "Exportar Excel", href: "/export", icon: FileSpreadsheet, module: "export" as ModuleKey },
   { title: "Configurações", href: "/settings", icon: Settings },
 ];
 
@@ -65,7 +66,7 @@ const THEME_LABELS: Record<ThemeKey, string> = {
   vibrant: "Vibrant",
 };
 
-function NavSection({ label, items }: { label: string; items: typeof mainNav }) {
+function NavSection({ label, items }: { label: string; items: { title: string; href: string; icon: typeof LayoutDashboard; module?: ModuleKey }[] }) {
   const pathname = usePathname();
 
   return (
@@ -91,7 +92,7 @@ function NavSection({ label, items }: { label: string; items: typeof mainNav }) 
 }
 
 export function AppSidebar() {
-  const { logout } = useAppStore();
+  const { data, logout } = useAppStore();
   const { theme, setTheme } = useTheme();
   const router = useRouter();
 
@@ -120,9 +121,9 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent data-tour="sidebar">
-        <NavSection label="Principal" items={mainNav} />
-        <NavSection label="Operações" items={operationsNav} />
-        <NavSection label="Ferramentas" items={toolsNav} />
+        <NavSection label="Principal" items={mainNav.filter((item) => data.profile.enabledModules.includes(item.module))} />
+        <NavSection label="Operações" items={operationsNav.filter((item) => data.profile.enabledModules.includes(item.module))} />
+        <NavSection label="Ferramentas" items={toolsNav.filter((item) => !item.module || data.profile.enabledModules.includes(item.module))} />
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-4 space-y-3">

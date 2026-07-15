@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcDSR, calcINSS, clientConcentration, monthsInYear, parseLocalDate } from "./calculations";
+import { calcDSR, calcINSS, clientConcentration, monthsInYear, parseLocalDate, productStock } from "./calculations";
 import type { Contract } from "./types";
 
 const contract = (client: string, monthlyFee: number, id: string): Contract => ({
@@ -30,5 +30,14 @@ describe("cálculos de domínio", () => {
   it("calcula DSR e limita o INSS ao teto", () => {
     expect(calcDSR(2200, 22, 4)).toBe(400);
     expect(calcINSS(100_000)).toBe(calcINSS(8475.55));
+  });
+
+  it("combina estoque legado, vendas e movimentações", () => {
+    const product = { ...contract("Produto", 0, "p1"), name: "Doce", category: "", supplier: "", initialQty: 10, entries: 2, minStock: 2, costPrice: 1, salePrice: 2 };
+    const { monthlyFee: _, saleDate: __, durationMonths: ___, status: ____, revenueType: _____, onboardingValue: ______, upsellCrossSellValue: _______, client: ________, ...validProduct } = product;
+    expect(productStock(validProduct, [{ id: "s1", productId: "p1", date: "2026-01-02", quantity: 3, createdAt: "" }], [
+      { id: "m1", productId: "p1", date: "2026-01-03", type: "Entrada", quantity: 5, createdAt: "" },
+      { id: "m2", productId: "p1", date: "2026-01-04", type: "Baixa", quantity: 1, createdAt: "" },
+    ])).toBe(13);
   });
 });

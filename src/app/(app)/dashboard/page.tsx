@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useAppStore } from "@/components/store-provider";
+import { StoreDashboard } from "@/components/store-dashboard";
 import { currency, percent, monthName, shortMonthName } from "@/lib/format";
 import {
   mrrActiveMonthly, activeContractsCount, mrrEnteringYear, mrrNextYear,
@@ -69,6 +70,7 @@ export default function DashboardPage() {
   if (!loaded) return null;
 
   const { contracts, meetings, payroll, profile } = data;
+  const showFinancialDashboard = profile.enabledModules.some((module) => ["contracts", "meetings", "goals", "payroll"].includes(module));
 
   // --- MRR Metrics ---
   const mrrActive = mrrActiveMonthly(contracts);
@@ -192,6 +194,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      <StoreDashboard />
+
+      {showFinancialDashboard && <>
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4" data-tour="kpi-cards">
         <ClickableStatCard
@@ -552,6 +557,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       )}
+      </>}
     </div>
   );
 }

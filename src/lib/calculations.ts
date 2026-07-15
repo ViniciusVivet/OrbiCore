@@ -1,4 +1,4 @@
-import { Contract, PayrollMonth, Meeting, Product, Sale } from "./types";
+import { Contract, PayrollMonth, Meeting, Product, Sale, StockMovement } from "./types";
 
 /** Interpreta datas de negócio sem deslocamento de dia por fuso horário. */
 export function parseLocalDate(value: string): Date {
@@ -265,15 +265,22 @@ export function meetingAlert(meeting: Meeting): string {
 // Estoque Calculations
 // =============================================
 
-export function productStock(product: Product, sales: Sale[]): number {
+export function productStock(product: Product, sales: Sale[], movements: StockMovement[] = []): number {
   const sold = sales
     .filter((s) => s.productId === product.id)
     .reduce((sum, s) => sum + s.quantity, 0);
-  return product.initialQty + product.entries - sold;
+  const moved = movements
+    .filter((movement) => movement.productId === product.id)
+    .reduce((total, movement) => {
+      if (movement.type === "Entrada") return total + movement.quantity;
+      if (movement.type === "Baixa") return total - movement.quantity;
+      return total + movement.quantity;
+    }, 0);
+  return product.initialQty + product.entries + moved - sold;
 }
 
-export function productNeedsRestock(product: Product, sales: Sale[]): boolean {
-  return productStock(product, sales) <= product.minStock;
+export function productNeedsRestock(product: Product, sales: Sale[], movements: StockMovement[] = []): boolean {
+  return productStock(product, sales, movements) <= product.minStock;
 }
 
 export function saleProfitAndMargin(sale: Sale, product: Product) {
