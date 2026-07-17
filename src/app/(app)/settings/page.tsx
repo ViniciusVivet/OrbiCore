@@ -5,11 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Settings, Save, RotateCcw, Orbit, Check, Moon, Sun, Sparkles, Palette, GraduationCap } from "lucide-react";
+import { Settings, Save, RotateCcw, Orbit, Check, Moon, Sun, Sparkles, Palette, GraduationCap, Building2, User, Upload, Trash2 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppStore } from "@/components/store-provider";
 import { useTheme, ThemeKey } from "@/components/theme-provider";
 import { toast } from "sonner";
 import { ModuleKey } from "@/lib/types";
+import { profileImageUrl, profileInitials, removeProfileImage, uploadProfileImage } from "@/lib/profile-image";
 
 const THEMES: { key: ThemeKey; label: string; description: string; icon: React.ReactNode; preview: string[] }[] = [
   {
@@ -37,29 +39,32 @@ const THEMES: { key: ThemeKey; label: string; description: string; icon: React.R
 
 const ALL_MODULES: { key: ModuleKey; label: string; description: string }[] = [
   { key: "dashboard", label: "Dashboard", description: "Painel principal com métricas e gráficos" },
-  { key: "contracts", label: "Contratos", description: "Gestão de contratos e MRR" },
-  { key: "meetings", label: "Reuniões", description: "Pipeline de vendas e reuniões" },
+  { key: "contracts", label: "Contratos e Clientes", description: "Gestão de contratos, clientes e MRR" },
+  { key: "meetings", label: "Pipeline Comercial", description: "Oportunidades, reuniões e retornos" },
   { key: "goals", label: "Metas", description: "Definição e acompanhamento de metas" },
-  { key: "products", label: "Produtos", description: "Catálogo e controle de estoque" },
-  { key: "sales", label: "Vendas", description: "Lançamento de vendas" },
-  { key: "payroll", label: "Cálculo Mensal", description: "Simulação de folha de pagamento" },
-  { key: "export", label: "Exportar", description: "Exportação de dados para Excel" },
+  { key: "products", label: "Produtos e Estoque", description: "Catálogo, saldo, reposição e movimentações" },
+  { key: "sales", label: "Vendas da Loja", description: "Registro de vendas, receita e lucro" },
+  { key: "payroll", label: "Cálculo de Remuneração", description: "Simulação de folha de pagamento" },
+  { key: "export", label: "Exportar Dados", description: "Exportação de dados para Excel" },
 ];
 
 export default function SettingsPage() {
-  const { data, loaded, updateProfile, resetData } = useAppStore();
+  const { data, loaded, updateProfile, resetData, loadDemoData } = useAppStore();
   const { theme, setTheme } = useTheme();
   const [name, setName] = useState("");
+  const [profileType, setProfileType] = useState<"person" | "company">("company");
   const [year, setYear] = useState(2026);
   const [enabledModules, setEnabledModules] = useState<ModuleKey[]>([]);
+  const [imageBusy, setImageBusy] = useState(false);
 
   useEffect(() => {
     if (loaded) {
       setName(data.profile.name);
+      setProfileType(data.profile.profileType ?? "company");
       setYear(data.profile.currentYear);
       setEnabledModules(data.profile.enabledModules);
     }
-  }, [loaded, data.profile.name, data.profile.currentYear, data.profile.enabledModules]);
+  }, [loaded, data.profile.name, data.profile.profileType, data.profile.currentYear, data.profile.enabledModules]);
 
   if (!loaded) return null;
 
@@ -72,14 +77,51 @@ export default function SettingsPage() {
   }
 
   function handleSave() {
-    updateProfile({ name, currentYear: year, enabledModules });
+    updateProfile({ name, profileType, currentYear: year, enabledModules });
     toast.success("Configurações salvas!");
   }
 
-  function handleReset() {
-    if (confirm("Isso vai resetar TODOS os dados para os valores iniciais. Tem certeza?")) {
+  async function handleReset() {
+    if (confirm("Isso vai apagar TODOS os dados da conta. Tem certeza?")) {
+      await removeProfileImage(data.profile.imagePath).catch(() => undefined);
       resetData();
-      toast.success("Dados resetados!");
+      toast.success("Dados apagados!");
+    }
+  }
+
+  async function handleImageUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setImageBusy(true);
+    try {
+      const imagePath = await uploadProfileImage(file, data.profile.imagePath);
+      updateProfile({ imagePath });
+      toast.success("Imagem atualizada!");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao enviar a imagem.");
+    } finally {
+      setImageBusy(false);
+    }
+  }
+
+  async function handleImageRemove() {
+    setImageBusy(true);
+    try {
+      await removeProfileImage(data.profile.imagePath);
+      updateProfile({ imagePath: undefined });
+      toast.success("Imagem removida!");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao remover a imagem.");
+    } finally {
+      setImageBusy(false);
+    }
+  }
+
+  function handleLoadDemo() {
+    if (confirm("Isso vai substituir TODOS os dados atuais pela demonstração. Continuar?")) {
+      loadDemoData();
+      toast.success("Dados de demonstração carregados!");
     }
   }
 
@@ -110,9 +152,51 @@ export default function SettingsPage() {
           <CardDescription>Informações básicas do seu workspace</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="flex flex-col gap-4 rounded-xl border border-border/50 p-4 sm:flex-row sm:items-center">
+            <Avatar className="size-20 rounded-xl" size="lg">
+              <AvatarImage className="rounded-xl" src={profileImageUrl(data.profile.imagePath)} alt={name || "Imagem do perfil"} />
+              <AvatarFallback className="rounded-xl text-xl font-semibold">
+                {profileInitials(name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="space-y-2">
+              <div>
+                <p className="text-sm font-medium">Imagem do perfil</p>
+                <p className="text-xs text-muted-foreground">
+                  Use sua foto ou o logo da empresa. JPG, PNG, WebP ou GIF, até 2 MB.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" size="sm" disabled={imageBusy} render={<label htmlFor="profile-image" />}>
+                  <Upload className="h-4 w-4" />
+                  {imageBusy ? "Enviando..." : "Enviar imagem"}
+                </Button>
+                <input id="profile-image" type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={handleImageUpload} />
+                {data.profile.imagePath && (
+                  <Button type="button" variant="ghost" size="sm" disabled={imageBusy} onClick={handleImageRemove}>
+                    <Trash2 className="h-4 w-4" />
+                    Remover
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Tipo de perfil</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Button type="button" variant={profileType === "person" ? "default" : "outline"} onClick={() => setProfileType("person")}>
+                <User className="h-4 w-4" />
+                Pessoa
+              </Button>
+              <Button type="button" variant={profileType === "company" ? "default" : "outline"} onClick={() => setProfileType("company")}>
+                <Building2 className="h-4 w-4" />
+                Empresa
+              </Button>
+            </div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Nome</Label>
+              <Label>{profileType === "company" ? "Nome da empresa" : "Nome"}</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="space-y-2">
@@ -252,10 +336,15 @@ export default function SettingsPage() {
           <p className="text-sm text-muted-foreground mb-4">
             Resetar todos os dados para o estado inicial. Essa ação não pode ser desfeita.
           </p>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="outline" onClick={handleLoadDemo}>
+              Carregar demonstração
+            </Button>
           <Button variant="destructive" onClick={handleReset} className="gap-2">
             <RotateCcw className="h-4 w-4" />
-            Resetar Todos os Dados
+            Apagar Todos os Dados
           </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
