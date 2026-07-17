@@ -42,7 +42,7 @@ export default function PayrollPage() {
         });
       }
     }
-  }, [loaded]);
+  }, [loaded, data.payroll, selectedMonth, year]);
 
   if (!loaded) return null;
 
