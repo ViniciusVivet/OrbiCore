@@ -34,23 +34,31 @@ import { useAppStore } from "@/components/store-provider";
 import { useTheme, ThemeKey } from "@/components/theme-provider";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ModuleKey } from "@/lib/types";
+import { profileImageUrl, profileInitials } from "@/lib/profile-image";
 
-const mainNav = [
+const overviewNav = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, module: "dashboard" as ModuleKey },
-  { title: "Contratos", href: "/contracts", icon: FileText, module: "contracts" as ModuleKey },
-  { title: "Reuniões", href: "/meetings", icon: Users, module: "meetings" as ModuleKey },
   { title: "Metas", href: "/goals", icon: Target, module: "goals" as ModuleKey },
 ];
 
-const operationsNav = [
-  { title: "Produtos", href: "/products", icon: Package, module: "products" as ModuleKey },
-  { title: "Vendas", href: "/sales", icon: ShoppingCart, module: "sales" as ModuleKey },
+const commercialNav = [
+  { title: "Pipeline Comercial", href: "/meetings", icon: Users, module: "meetings" as ModuleKey },
+  { title: "Contratos e Clientes", href: "/contracts", icon: FileText, module: "contracts" as ModuleKey },
 ];
 
-const toolsNav = [
-  { title: "Cálculo Mensal", href: "/payroll", icon: Calculator, module: "payroll" as ModuleKey },
-  { title: "Exportar Excel", href: "/export", icon: FileSpreadsheet, module: "export" as ModuleKey },
+const storeNav = [
+  { title: "Produtos e Estoque", href: "/products", icon: Package, module: "products" as ModuleKey },
+  { title: "Vendas da Loja", href: "/sales", icon: ShoppingCart, module: "sales" as ModuleKey },
+];
+
+const financeNav = [
+  { title: "Cálculo de Remuneração", href: "/payroll", icon: Calculator, module: "payroll" as ModuleKey },
+];
+
+const adminNav = [
+  { title: "Exportar Dados", href: "/export", icon: FileSpreadsheet, module: "export" as ModuleKey },
   { title: "Configurações", href: "/settings", icon: Settings },
 ];
 
@@ -68,6 +76,7 @@ const THEME_LABELS: Record<ThemeKey, string> = {
 
 function NavSection({ label, items }: { label: string; items: { title: string; href: string; icon: typeof LayoutDashboard; module?: ModuleKey }[] }) {
   const pathname = usePathname();
+  if (items.length === 0) return null;
 
   return (
     <SidebarGroup>
@@ -106,12 +115,15 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-            <Orbit className="h-5 w-5 text-primary" />
-          </div>
-          <div>
+          <Avatar className="size-10 rounded-lg">
+            <AvatarImage className="rounded-lg" src={profileImageUrl(data.profile.imagePath)} alt={data.profile.name || "Imagem do perfil"} />
+            <AvatarFallback className="rounded-lg bg-primary/10 font-semibold text-primary">
+              {data.profile.name ? profileInitials(data.profile.name) : <Orbit className="h-5 w-5" />}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
             <h1 className="text-base font-bold tracking-tight text-foreground">
-              OrbiCore
+              {data.profile.name || "OrbiCore"}
             </h1>
             <p className="text-[11px] text-muted-foreground">
               Gestão inteligente
@@ -121,9 +133,11 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent data-tour="sidebar">
-        <NavSection label="Principal" items={mainNav.filter((item) => data.profile.enabledModules.includes(item.module))} />
-        <NavSection label="Operações" items={operationsNav.filter((item) => data.profile.enabledModules.includes(item.module))} />
-        <NavSection label="Ferramentas" items={toolsNav.filter((item) => !item.module || data.profile.enabledModules.includes(item.module))} />
+        <NavSection label="Visão Geral" items={overviewNav.filter((item) => data.profile.enabledModules.includes(item.module))} />
+        <NavSection label="Comercial e Contratos" items={commercialNav.filter((item) => data.profile.enabledModules.includes(item.module))} />
+        <NavSection label="Loja e Estoque" items={storeNav.filter((item) => data.profile.enabledModules.includes(item.module))} />
+        <NavSection label="Financeiro" items={financeNav.filter((item) => data.profile.enabledModules.includes(item.module))} />
+        <NavSection label="Administração" items={adminNav.filter((item) => !item.module || data.profile.enabledModules.includes(item.module))} />
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-4 space-y-3">
