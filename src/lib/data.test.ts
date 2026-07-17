@@ -9,6 +9,7 @@ describe("dados da aplicação", () => {
     expect(data.contracts).toEqual([]);
     expect(data.products).toEqual([]);
     expect(data.profile.yearlyGoal).toBe(0);
+    expect(data.profile.enabledFeatures).toEqual([]);
   });
 
   it("normaliza documentos antigos sem inventar conteúdo", () => {

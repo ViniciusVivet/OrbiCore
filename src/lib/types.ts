@@ -128,10 +128,13 @@ export type ModuleKey =
   | "payroll"
   | "export";
 
+export type AppFeatureKey = "churn-risk-90d";
+
 export interface OrgProfile {
   name: string;
   profileType?: "person" | "company";
   imagePath?: string;
+  enabledFeatures?: AppFeatureKey[];
   enabledModules: ModuleKey[];
   yearlyGoal: number;
   currentYear: number;

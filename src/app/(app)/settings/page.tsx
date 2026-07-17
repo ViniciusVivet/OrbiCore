@@ -5,12 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Settings, Save, RotateCcw, Orbit, Check, Moon, Sun, Sparkles, Palette, GraduationCap, Building2, User, Upload, Trash2 } from "lucide-react";
+import { Settings, Save, RotateCcw, Orbit, Check, Moon, Sun, Sparkles, Palette, GraduationCap, Building2, User, Upload, Trash2, SlidersHorizontal, Shield } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppStore } from "@/components/store-provider";
 import { useTheme, ThemeKey } from "@/components/theme-provider";
 import { toast } from "sonner";
-import { ModuleKey } from "@/lib/types";
+import { AppFeatureKey, ModuleKey } from "@/lib/types";
 import { profileImageUrl, profileInitials, removeProfileImage, uploadProfileImage } from "@/lib/profile-image";
 import { formatFileSize, optimizeImage } from "@/lib/image-optimizer";
 import { removeProductImages } from "@/lib/product-images";
@@ -57,6 +57,7 @@ export default function SettingsPage() {
   const [profileType, setProfileType] = useState<"person" | "company">("company");
   const [year, setYear] = useState(2026);
   const [enabledModules, setEnabledModules] = useState<ModuleKey[]>([]);
+  const [enabledFeatures, setEnabledFeatures] = useState<AppFeatureKey[]>([]);
   const [imageBusy, setImageBusy] = useState(false);
   const [imageStatus, setImageStatus] = useState<{ kind: "working" | "success" | "error"; text: string } | null>(null);
 
@@ -66,8 +67,9 @@ export default function SettingsPage() {
       setProfileType(data.profile.profileType ?? "company");
       setYear(data.profile.currentYear);
       setEnabledModules(data.profile.enabledModules);
+      setEnabledFeatures(data.profile.enabledFeatures ?? []);
     }
-  }, [loaded, data.profile.name, data.profile.profileType, data.profile.currentYear, data.profile.enabledModules]);
+  }, [loaded, data.profile.name, data.profile.profileType, data.profile.currentYear, data.profile.enabledModules, data.profile.enabledFeatures]);
 
   if (!loaded) return null;
 
@@ -80,7 +82,7 @@ export default function SettingsPage() {
   }
 
   function handleSave() {
-    updateProfile({ name, profileType, currentYear: year, enabledModules });
+    updateProfile({ name, profileType, currentYear: year, enabledModules, enabledFeatures });
     toast.success("Configurações salvas!");
   }
 
@@ -91,6 +93,12 @@ export default function SettingsPage() {
       resetData();
       toast.success("Dados apagados!");
     }
+  }
+
+  function toggleFeature(key: AppFeatureKey) {
+    setEnabledFeatures((current) =>
+      current.includes(key) ? current.filter((item) => item !== key) : [...current, key]
+    );
   }
 
   async function handleImageUpload(event: React.ChangeEvent<HTMLInputElement>) {
@@ -237,6 +245,42 @@ export default function SettingsPage() {
           <Button onClick={handleSave} className="gap-2">
             <Save className="h-4 w-4" />
             Salvar
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <SlidersHorizontal className="h-5 w-5 text-primary" />
+            Recursos opcionais
+          </CardTitle>
+          <CardDescription>Ative apenas os indicadores que fazem sentido para esta operação.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <button
+            type="button"
+            onClick={() => toggleFeature("churn-risk-90d")}
+            className={`flex w-full items-start gap-3 rounded-xl border p-4 text-left transition-colors ${
+              enabledFeatures.includes("churn-risk-90d")
+                ? "border-primary/40 bg-primary/5"
+                : "border-border/50 hover:border-primary/30"
+            }`}
+          >
+            <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
+              enabledFeatures.includes("churn-risk-90d") ? "border-primary bg-primary" : "border-muted-foreground/30"
+            }`}>
+              {enabledFeatures.includes("churn-risk-90d") && <Check className="h-3 w-3 text-primary-foreground" />}
+            </div>
+            <Shield className="mt-0.5 h-5 w-5 shrink-0 text-orbi-rose" />
+            <div>
+              <p className="text-sm font-medium">Risco de churn em 90 dias</p>
+              <p className="text-xs text-muted-foreground">Mostra contratos próximos do vencimento no dashboard e na central de alertas. Desativado por padrão.</p>
+            </div>
+          </button>
+          <Button onClick={handleSave} className="gap-2">
+            <Save className="h-4 w-4" />
+            Salvar recursos
           </Button>
         </CardContent>
       </Card>

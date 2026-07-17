@@ -70,6 +70,7 @@ export default function DashboardPage() {
   if (!loaded) return null;
 
   const { contracts, meetings, payroll, profile } = data;
+  const churnEnabled = profile.enabledFeatures?.includes("churn-risk-90d") ?? false;
   const showFinancialDashboard = profile.enabledModules.some((module) => ["contracts", "meetings", "goals", "payroll"].includes(module));
 
   // --- MRR Metrics ---
@@ -328,7 +329,7 @@ export default function DashboardPage() {
           icon={<Target className="h-4 w-4 text-purple-400" />}
           bg="bg-purple-400/10"
         />
-        <ClickableStatCard
+        {churnEnabled && <ClickableStatCard
           href="/contracts"
           title="Risco de Churn (90d)"
           value={churn.count > 0 ? currency(churn.mrrAtRisk) : "Seguro"}
@@ -338,7 +339,7 @@ export default function DashboardPage() {
           icon={<Shield className="h-4 w-4 text-orbi-rose" />}
           bg="bg-orbi-rose/10"
           highlight={churn.count > 0}
-        />
+        />}
         <ClickableStatCard
           href="/contracts"
           title="Concentração"
@@ -520,7 +521,7 @@ export default function DashboardPage() {
       )}
 
       {/* Alerts */}
-      {(overdueAlerts.length > 0 || upcomingAlerts.length > 0 || churn.count > 0) && (
+      {(overdueAlerts.length > 0 || upcomingAlerts.length > 0 || (churnEnabled && churn.count > 0)) && (
         <Card className="border-border/50">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -529,13 +530,13 @@ export default function DashboardPage() {
                 Alertas
               </CardTitle>
               <Badge variant="outline" className="text-orbi-amber border-orbi-amber/30">
-                {overdueAlerts.length + upcomingAlerts.length + churn.count}
+                {overdueAlerts.length + upcomingAlerts.length + (churnEnabled ? churn.count : 0)}
               </Badge>
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {churn.contracts.map((c) => (
+              {churnEnabled && churn.contracts.map((c) => (
                 <Link key={c.id} href="/contracts" className="flex items-center justify-between rounded-lg bg-orbi-rose/10 px-4 py-2.5 hover:bg-orbi-rose/15 transition-colors">
                   <span className="text-sm">{c.client} — contrato vence em breve ({currency(c.monthlyFee)}/mês)</span>
                   <Badge variant="destructive">Churn Risk</Badge>

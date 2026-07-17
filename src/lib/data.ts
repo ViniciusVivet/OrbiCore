@@ -3,6 +3,7 @@ import { AppData, OrgProfile } from "./types";
 export const DEFAULT_PROFILE: OrgProfile = {
   name: "",
   profileType: "company",
+  enabledFeatures: [],
   enabledModules: [
     "dashboard",
     "contracts",
