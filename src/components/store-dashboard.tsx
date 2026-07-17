@@ -1,6 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import {
+  closestCenter,
+  DndContext,
+  DragEndEvent,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  rectSortingStrategy,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ArrowDown, ArrowUp, Boxes, Eye, EyeOff, GripVertical, PackageSearch, Settings2, WalletCards } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +47,11 @@ export function StoreDashboard() {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<DashboardWidgetKey[]>(data.profile.dashboardWidgets ?? DEFAULT_WIDGETS);
   const enabled = data.profile.dashboardWidgets ?? DEFAULT_WIDGETS;
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   if (!data.profile.enabledModules.some((module) => module === "products" || module === "sales")) return null;
 
@@ -56,6 +80,20 @@ export function StoreDashboard() {
     setOpen(false);
   }
 
+  function reorder(items: DashboardWidgetKey[], event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return items;
+    const oldIndex = items.indexOf(active.id as DashboardWidgetKey);
+    const newIndex = items.indexOf(over.id as DashboardWidgetKey);
+    if (oldIndex < 0 || newIndex < 0) return items;
+    return arrayMove(items, oldIndex, newIndex);
+  }
+
+  function handleDashboardDragEnd(event: DragEndEvent) {
+    const next = reorder(enabled, event);
+    if (next !== enabled) updateProfile({ dashboardWidgets: next });
+  }
+
   return (
     <section className="space-y-4" data-tour="store-dashboard">
       <div className="flex items-center justify-between gap-3">
@@ -66,31 +104,94 @@ export function StoreDashboard() {
       {enabled.length === 0 ? (
         <Card className="border-dashed"><CardContent className="flex flex-col items-center py-8 text-center"><EyeOff className="mb-3 h-8 w-8 text-muted-foreground" /><p className="font-medium">Nenhum bloco selecionado</p><Button variant="link" onClick={openSettings}>Escolher o que mostrar</Button></CardContent></Card>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {enabled.map((key) => <StoreWidget key={key} widgetKey={key} />)}
-        </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDashboardDragEnd}>
+          <SortableContext items={enabled} strategy={rectSortingStrategy}>
+            <div className="grid gap-4 lg:grid-cols-2">
+              {enabled.map((key) => <SortableWidget key={key} widgetKey={key} />)}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader><DialogTitle>Personalizar dashboard</DialogTitle></DialogHeader>
           <p className="text-sm text-muted-foreground">Escolha os blocos e defina a ordem. A configuração fica salva para sua conta.</p>
-          <div className="space-y-2">
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(event) => setDraft((current) => reorder(current, event))}>
+            <SortableContext items={draft} strategy={verticalListSortingStrategy}>
+            <div className="space-y-2">
             {WIDGETS.map((widget) => {
               const active = draft.includes(widget.key);
               const index = draft.indexOf(widget.key);
-              return <div key={widget.key} className={`flex items-center gap-2 rounded-xl border p-3 ${active ? "border-primary/30 bg-primary/5" : "border-border/50 opacity-70"}`}>
-                <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
+              return <SortableSettingsRow key={widget.key} id={widget.key} disabled={!active} className={`flex items-center gap-2 rounded-xl border p-3 ${active ? "border-primary/30 bg-primary/5" : "border-border/50 opacity-70"}`}>
                 <button className="min-w-0 flex-1 text-left" onClick={() => toggle(widget.key)}><p className="text-sm font-medium">{widget.label}</p><p className="truncate text-xs text-muted-foreground">{widget.description}</p></button>
                 {active && <div className="flex gap-1"><Button variant="ghost" size="icon-sm" aria-label="Mover para cima" disabled={index === 0} onClick={() => move(widget.key, -1)}><ArrowUp className="h-4 w-4" /></Button><Button variant="ghost" size="icon-sm" aria-label="Mover para baixo" disabled={index === draft.length - 1} onClick={() => move(widget.key, 1)}><ArrowDown className="h-4 w-4" /></Button></div>}
                 <Button variant="ghost" size="icon-sm" aria-label={active ? "Ocultar bloco" : "Mostrar bloco"} onClick={() => toggle(widget.key)}>{active ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}</Button>
-              </div>;
+              </SortableSettingsRow>;
             })}
-          </div>
+            </div>
+            </SortableContext>
+          </DndContext>
           <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={save}>Salvar organização</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </section>
+  );
+}
+
+function SortableWidget({ widgetKey }: { widgetKey: DashboardWidgetKey }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: widgetKey });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`relative min-w-0 ${isDragging ? "z-30 scale-[1.02] opacity-90 shadow-2xl" : ""}`}
+    >
+      <button
+        type="button"
+        className="absolute right-11 top-4 z-20 flex size-10 touch-none items-center justify-center rounded-lg border border-border bg-background/95 text-muted-foreground shadow-sm transition-colors hover:border-primary/40 hover:text-foreground active:cursor-grabbing sm:size-9"
+        aria-label="Arrastar para reorganizar este bloco"
+        title="Arraste para mudar a posição"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-5 w-5" />
+      </button>
+      <StoreWidget widgetKey={widgetKey} />
+    </div>
+  );
+}
+
+function SortableSettingsRow({
+  id,
+  disabled,
+  className,
+  children,
+}: {
+  id: DashboardWidgetKey;
+  disabled: boolean;
+  className: string;
+  children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`${className} ${isDragging ? "z-30 scale-[1.01] bg-background shadow-xl" : ""}`}
+    >
+      <button
+        type="button"
+        className={`flex size-10 shrink-0 touch-none items-center justify-center rounded-lg text-muted-foreground active:cursor-grabbing ${disabled ? "cursor-default" : "cursor-grab hover:bg-muted hover:text-foreground"}`}
+        aria-label={disabled ? "Ative o bloco para poder reorganizar" : "Arrastar para reorganizar"}
+        disabled={disabled}
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-5 w-5" />
+      </button>
+      {children}
+    </div>
   );
 }
 
