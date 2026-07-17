@@ -46,7 +46,15 @@ export function StoreDashboard() {
   const { data, updateProfile } = useAppStore();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<DashboardWidgetKey[]>(data.profile.dashboardWidgets ?? DEFAULT_WIDGETS);
+  const [orderMessage, setOrderMessage] = useState("");
   const enabled = data.profile.dashboardWidgets ?? DEFAULT_WIDGETS;
+  const orderedWidgets = [
+    ...draft.flatMap((key) => {
+      const widget = WIDGETS.find((item) => item.key === key);
+      return widget ? [widget] : [];
+    }),
+    ...WIDGETS.filter((widget) => !draft.includes(widget.key)),
+  ];
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
@@ -56,22 +64,22 @@ export function StoreDashboard() {
   if (!data.profile.enabledModules.some((module) => module === "products" || module === "sales")) return null;
 
   function toggle(key: DashboardWidgetKey) {
-    setDraft((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key]);
+    const active = draft.includes(key);
+    setDraft(active ? draft.filter((item) => item !== key) : [...draft, key]);
+    setOrderMessage(active ? "Bloco ocultado. A ordem dos demais foi atualizada." : "Bloco adicionado ao final da lista.");
   }
 
   function move(key: DashboardWidgetKey, direction: -1 | 1) {
-    setDraft((current) => {
-      const index = current.indexOf(key);
-      const nextIndex = index + direction;
-      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return current;
-      const next = [...current];
-      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
-      return next;
-    });
+    const index = draft.indexOf(key);
+    const nextIndex = index + direction;
+    if (index < 0 || nextIndex < 0 || nextIndex >= draft.length) return;
+    setDraft(arrayMove(draft, index, nextIndex));
+    setOrderMessage(`Bloco movido para a posição ${nextIndex + 1} de ${draft.length}.`);
   }
 
   function openSettings() {
     setDraft([...enabled]);
+    setOrderMessage("");
     setOpen(true);
   }
 
@@ -117,14 +125,21 @@ export function StoreDashboard() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader><DialogTitle>Personalizar dashboard</DialogTitle></DialogHeader>
           <p className="text-sm text-muted-foreground">Escolha os blocos e defina a ordem. A configuração fica salva para sua conta.</p>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(event) => setDraft((current) => reorder(current, event))}>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(event) => {
+            const next = reorder(draft, event);
+            if (next !== draft) {
+              const newIndex = next.indexOf(event.active.id as DashboardWidgetKey);
+              setOrderMessage(`Bloco arrastado para a posição ${newIndex + 1} de ${next.length}.`);
+              setDraft(next);
+            }
+          }}>
             <SortableContext items={draft} strategy={verticalListSortingStrategy}>
             <div className="space-y-2">
-            {WIDGETS.map((widget) => {
+            {orderedWidgets.map((widget) => {
               const active = draft.includes(widget.key);
               const index = draft.indexOf(widget.key);
               return <SortableSettingsRow key={widget.key} id={widget.key} disabled={!active} className={`flex items-center gap-2 rounded-xl border p-3 ${active ? "border-primary/30 bg-primary/5" : "border-border/50 opacity-70"}`}>
-                <button className="min-w-0 flex-1 text-left" onClick={() => toggle(widget.key)}><p className="text-sm font-medium">{widget.label}</p><p className="truncate text-xs text-muted-foreground">{widget.description}</p></button>
+                <button className="min-w-0 flex-1 text-left" onClick={() => toggle(widget.key)}><p className="flex items-center gap-2 text-sm font-medium">{widget.label}{active && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">{index + 1}º</span>}</p><p className="truncate text-xs text-muted-foreground">{widget.description}</p></button>
                 {active && <div className="flex gap-1"><Button variant="ghost" size="icon-sm" aria-label="Mover para cima" disabled={index === 0} onClick={() => move(widget.key, -1)}><ArrowUp className="h-4 w-4" /></Button><Button variant="ghost" size="icon-sm" aria-label="Mover para baixo" disabled={index === draft.length - 1} onClick={() => move(widget.key, 1)}><ArrowDown className="h-4 w-4" /></Button></div>}
                 <Button variant="ghost" size="icon-sm" aria-label={active ? "Ocultar bloco" : "Mostrar bloco"} onClick={() => toggle(widget.key)}>{active ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}</Button>
               </SortableSettingsRow>;
@@ -132,6 +147,9 @@ export function StoreDashboard() {
             </div>
             </SortableContext>
           </DndContext>
+          <div aria-live="polite" className={`min-h-10 rounded-lg border px-3 py-2 text-sm transition-colors ${orderMessage ? "border-primary/30 bg-primary/5 text-foreground" : "border-transparent text-muted-foreground"}`}>
+            {orderMessage || "Arraste pela alça ou use as setas. A numeração mostra a ordem final."}
+          </div>
           <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={save}>Salvar organização</Button></DialogFooter>
         </DialogContent>
       </Dialog>
