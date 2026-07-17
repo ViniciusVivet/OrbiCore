@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { AppData, Contract, Meeting, Product, Sale, StockMovement, PayrollMonth, OrgProfile, SyncStatus } from "./types";
 import { SEED_DATA } from "./seed-data";
+import { createEmptyData, normalizeData, removeProductWithReferences } from "./data";
 import { createClient } from "./supabase/client";
 
 const LEGACY_STORAGE_KEY = "orbicore_data";
@@ -12,17 +13,13 @@ function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-function normalizeData(data: AppData): AppData {
-  return { ...SEED_DATA, ...data, stockMovements: data.stockMovements ?? [] };
-}
-
 // LocalStorage as fast cache
 function loadLocalCache(userId: string): AppData | null {
   if (typeof window === "undefined") return null;
   try {
     const key = storageKey(userId);
     const raw = localStorage.getItem(key) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
-    if (raw) return normalizeData(JSON.parse(raw) as AppData);
+    if (raw) return normalizeData(JSON.parse(raw) as Partial<AppData>);
   } catch {}
   return null;
 }
@@ -33,24 +30,29 @@ function saveLocalCache(userId: string, data: AppData) {
 }
 
 // Supabase sync
-async function loadFromSupabase(userId: string): Promise<AppData | null | undefined> {
+type RemoteData = { data: AppData; revision: number };
+
+async function loadFromSupabase(userId: string): Promise<RemoteData | null | undefined> {
   try {
     const supabase = createClient();
     const { data, error } = await supabase
       .from("app_data")
-      .select("data")
+      .select("data, revision")
       .eq("user_id", userId)
       .maybeSingle();
 
     if (error) return undefined;
     if (!data) return null;
-    return normalizeData(data.data as AppData);
+    return {
+      data: normalizeData(data.data as Partial<AppData>),
+      revision: Number(data.revision ?? 0),
+    };
   } catch {
     return undefined;
   }
 }
 
-async function saveToSupabase(userId: string, appData: AppData): Promise<boolean> {
+async function createInSupabase(userId: string, appData: AppData): Promise<boolean> {
   try {
     const supabase = createClient();
     const { error } = await supabase
@@ -68,11 +70,26 @@ async function saveToSupabase(userId: string, appData: AppData): Promise<boolean
   }
 }
 
+async function saveToSupabase(appData: AppData, revision: number): Promise<number | null> {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc("save_app_data", {
+      new_data: appData,
+      expected_revision: revision,
+    });
+    if (error) return null;
+    return Number(data);
+  } catch {
+    return null;
+  }
+}
+
 export function useStore() {
-  const [data, setData] = useState<AppData>(SEED_DATA);
+  const [data, setData] = useState<AppData>(() => createEmptyData());
   const [loaded, setLoaded] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("loading");
   const userIdRef = useRef<string | null>(null);
+  const revisionRef = useRef(0);
   const saveQueueRef = useRef(Promise.resolve());
 
   useEffect(() => {
@@ -92,21 +109,23 @@ export function useStore() {
 
       const remote = await loadFromSupabase(user.id);
       if (remote) {
-        setData(remote);
-        saveLocalCache(user.id, remote);
+        revisionRef.current = remote.revision;
+        setData(remote.data);
+        saveLocalCache(user.id, remote.data);
         localStorage.removeItem(LEGACY_STORAGE_KEY);
         setSyncStatus("synced");
       } else if (remote === undefined) {
         // Falha de rede/servidor: nunca sobrescreve o remoto com cache possivelmente antigo.
         setSyncStatus(navigator.onLine ? "error" : "offline");
       } else if (!cached) {
-        setData(SEED_DATA);
-        saveLocalCache(user.id, SEED_DATA);
-        const saved = await saveToSupabase(user.id, SEED_DATA);
+        const emptyData = createEmptyData();
+        setData(emptyData);
+        saveLocalCache(user.id, emptyData);
+        const saved = await createInSupabase(user.id, emptyData);
         setSyncStatus(saved ? "synced" : "offline");
       } else {
         saveLocalCache(user.id, cached);
-        const saved = await saveToSupabase(user.id, cached);
+        const saved = await createInSupabase(user.id, cached);
         if (saved) localStorage.removeItem(LEGACY_STORAGE_KEY);
         setSyncStatus(saved ? "synced" : "offline");
       }
@@ -125,8 +144,20 @@ export function useStore() {
         saveLocalCache(userId, next);
         setSyncStatus("saving");
         saveQueueRef.current = saveQueueRef.current.then(async () => {
-          const saved = await saveToSupabase(userId, next);
-          setSyncStatus(saved ? "synced" : navigator.onLine ? "error" : "offline");
+          const revision = await saveToSupabase(next, revisionRef.current);
+          if (revision !== null) {
+            revisionRef.current = revision;
+            setSyncStatus("synced");
+            return;
+          }
+
+          const remote = await loadFromSupabase(userId);
+          if (remote) {
+            revisionRef.current = remote.revision;
+            setData(remote.data);
+            saveLocalCache(userId, remote.data);
+          }
+          setSyncStatus(navigator.onLine ? "error" : "offline");
         });
       }
       return next;
@@ -192,7 +223,7 @@ export function useStore() {
   }, [update]);
 
   const deleteProduct = useCallback((id: string) => {
-    update((d) => ({ ...d, products: d.products.filter((x) => x.id !== id) }));
+    update((d) => removeProductWithReferences(d, id));
   }, [update]);
 
   // --- Sales ---
@@ -244,7 +275,11 @@ export function useStore() {
 
   // --- Reset ---
   const resetData = useCallback(() => {
-    update(() => SEED_DATA);
+    update(() => createEmptyData());
+  }, [update]);
+
+  const loadDemoData = useCallback(() => {
+    update(() => normalizeData(SEED_DATA));
   }, [update]);
 
   // --- Logout ---
@@ -275,6 +310,7 @@ export function useStore() {
     deleteStockMovement,
     upsertPayroll,
     resetData,
+    loadDemoData,
     logout,
   };
 }

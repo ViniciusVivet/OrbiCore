@@ -3,6 +3,7 @@ import { AppData } from "./types";
 export const SEED_DATA: AppData = {
   profile: {
     name: "Vagner",
+    profileType: "person",
     enabledModules: ["dashboard", "contracts", "meetings", "goals", "payroll", "export"],
     yearlyGoal: 46800,
     currentYear: 2026,
@@ -249,5 +250,4 @@ export const SEED_DATA: AppData = {
       createdAt: "2026-01-01T00:00:00Z",
     },
   ],
-  goals: [],
 };

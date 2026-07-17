@@ -91,6 +91,7 @@ Crie o arquivo `.env.local` na raiz:
 NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-anon-key
 CRON_SECRET=uma-senha-aleatoria-para-proteger-o-cron
+SUPABASE_SERVICE_ROLE_KEY=sua-service-role-key
 ```
 
 ### Desenvolvimento

@@ -4,15 +4,16 @@ import { createClient } from "@supabase/supabase-js";
 export async function GET(request: Request) {
   const authorization = request.headers.get("authorization");
   const expectedAuthorization = `Bearer ${process.env.CRON_SECRET}`;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!process.env.CRON_SECRET || authorization !== expectedAuthorization) {
+  if (!process.env.CRON_SECRET || !serviceRoleKey || authorization !== expectedAuthorization) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   // Ping no Supabase pra evitar cold start
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    serviceRoleKey
   );
 
   const { error } = await supabase

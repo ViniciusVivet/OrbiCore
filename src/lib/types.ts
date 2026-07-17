@@ -58,13 +58,17 @@ export interface Meeting {
 export interface Product {
   id: string;
   name: string;
+  sku?: string;
+  unit?: string;
   category: string;
   supplier: string;
   initialQty: number;
   entries: number;
   minStock: number;
+  idealStock?: number;
   costPrice: number;
   salePrice: number;
+  active?: boolean;
   createdAt: string;
 }
 
@@ -85,6 +89,7 @@ export interface StockMovement {
   type: StockMovementType;
   quantity: number;
   unitCost?: number;
+  reason?: "Reposição" | "Devolução" | "Perda" | "Avaria" | "Uso interno" | "Correção";
   note?: string;
   createdAt: string;
 }
@@ -111,17 +116,6 @@ export interface PayrollMonth {
 }
 
 // --- Metas ---
-export type GoalPeriod = "monthly" | "quarterly" | "yearly";
-
-export interface Goal {
-  id: string;
-  module: string;
-  period: GoalPeriod;
-  year: number;
-  targetValue: number;
-  createdAt: string;
-}
-
 // --- Organizacao / Perfil ---
 export type ModuleKey =
   | "dashboard"
@@ -135,6 +129,8 @@ export type ModuleKey =
 
 export interface OrgProfile {
   name: string;
+  profileType?: "person" | "company";
+  imagePath?: string;
   enabledModules: ModuleKey[];
   yearlyGoal: number;
   currentYear: number;
@@ -156,5 +152,4 @@ export interface AppData {
   sales: Sale[];
   stockMovements: StockMovement[];
   payroll: PayrollMonth[];
-  goals: Goal[];
 }
