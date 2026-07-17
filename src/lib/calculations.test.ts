@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcDSR, calcINSS, clientConcentration, monthsInYear, parseLocalDate, productStock } from "./calculations";
+import { calcDSR, calcINSS, clientConcentration, monthsInYear, parseLocalDate, productStock, productStockStatus, suggestedRestockQuantity } from "./calculations";
 import type { Contract } from "./types";
 
 const contract = (client: string, monthlyFee: number, id: string): Contract => ({
@@ -39,5 +39,11 @@ describe("cálculos de domínio", () => {
       { id: "m1", productId: "p1", date: "2026-01-03", type: "Entrada", quantity: 5, createdAt: "" },
       { id: "m2", productId: "p1", date: "2026-01-04", type: "Baixa", quantity: 1, createdAt: "" },
     ])).toBe(13);
+  });
+
+  it("classifica o saldo e sugere reposição", () => {
+    const product = { id: "p", name: "Produto", category: "", supplier: "", initialQty: 2, entries: 0, minStock: 3, idealStock: 10, costPrice: 1, salePrice: 2, createdAt: "" };
+    expect(productStockStatus(product, [], [])).toBe("low");
+    expect(suggestedRestockQuantity(product, [], [])).toBe(8);
   });
 });

@@ -283,6 +283,26 @@ export function productNeedsRestock(product: Product, sales: Sale[], movements: 
   return productStock(product, sales, movements) <= product.minStock;
 }
 
+export function productStockStatus(
+  product: Product,
+  sales: Sale[],
+  movements: StockMovement[] = []
+): "out" | "low" | "ok" {
+  const stock = productStock(product, sales, movements);
+  if (stock <= 0) return "out";
+  if (stock <= product.minStock) return "low";
+  return "ok";
+}
+
+export function suggestedRestockQuantity(
+  product: Product,
+  sales: Sale[],
+  movements: StockMovement[] = []
+): number {
+  const target = Math.max(product.idealStock ?? product.minStock * 2, product.minStock);
+  return Math.max(0, target - productStock(product, sales, movements));
+}
+
 export function saleProfitAndMargin(sale: Sale, product: Product) {
   const profit = (product.salePrice - product.costPrice) * sale.quantity;
   const margin = product.salePrice > 0 ? (product.salePrice - product.costPrice) / product.salePrice : 0;
