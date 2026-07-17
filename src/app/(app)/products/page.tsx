@@ -11,12 +11,14 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Package, AlertTriangle, ArrowDownToLine, History, Search, Boxes, Banknote, ShoppingCart, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, AlertTriangle, ArrowDownToLine, History, Search, Boxes, Banknote, ShoppingCart, Eye, ImagePlus, X } from "lucide-react";
 import { useAppStore } from "@/components/store-provider";
 import { currency, percent } from "@/lib/format";
 import { productStock, productNeedsRestock, productStockStatus, suggestedRestockQuantity } from "@/lib/calculations";
 import { Product, StockMovement, StockMovementType } from "@/lib/types";
 import { toast } from "sonner";
+import { formatFileSize, optimizeImage } from "@/lib/image-optimizer";
+import { MAX_PRODUCT_IMAGES, productImageUrl, removeProductImages, uploadProductImage } from "@/lib/product-images";
 
 type FormData = Omit<Product, "id" | "createdAt">;
 type MovementForm = Omit<StockMovement, "id" | "createdAt"> & {
@@ -49,6 +51,8 @@ export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [imageBusy, setImageBusy] = useState(false);
+  const [imageStatus, setImageStatus] = useState<{ kind: "working" | "success" | "error"; text: string } | null>(null);
   const [movement, setMovement] = useState<MovementForm>({
     productId: "", date: new Date().toISOString().split("T")[0],
     type: "Entrada" as StockMovementType, quantity: 1, unitCost: 0, reason: "Reposição", note: "",
@@ -124,6 +128,72 @@ export default function ProductsPage() {
     setMovementOpen(false);
   }
 
+  async function handleProductImages(event: React.ChangeEvent<HTMLInputElement>, product: Product) {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (files.length === 0) return;
+    const currentPaths = product.imagePaths ?? [];
+    const available = MAX_PRODUCT_IMAGES - currentPaths.length;
+    if (available <= 0) {
+      setImageStatus({ kind: "error", text: "Este produto já possui o limite de 3 fotos." });
+      return;
+    }
+
+    setImageBusy(true);
+    const uploadedPaths: string[] = [];
+    try {
+      for (const [index, file] of files.slice(0, available).entries()) {
+        setImageStatus({ kind: "working", text: `Preparando foto ${index + 1} de ${Math.min(files.length, available)}...` });
+        const optimized = await optimizeImage(file, {
+          maxDimension: 1600,
+          targetBytes: 350 * 1024,
+          maxBytes: 500 * 1024,
+        });
+        setImageStatus({ kind: "working", text: `Foto ${index + 1} reduzida de ${formatFileSize(optimized.originalBytes)} para ${formatFileSize(optimized.optimizedBytes)}. Enviando...` });
+        uploadedPaths.push(await uploadProductImage(product.id, optimized.file));
+      }
+      updateProduct(product.id, { imagePaths: [...currentPaths, ...uploadedPaths] });
+      const ignored = Math.max(0, files.length - available);
+      setImageStatus({
+        kind: "success",
+        text: `${uploadedPaths.length} foto(s) enviada(s) e salva(s) com sucesso.${ignored ? ` ${ignored} ignorada(s) por causa do limite de 3.` : ""}`,
+      });
+      toast.success("Fotos do produto atualizadas!");
+    } catch (error) {
+      if (uploadedPaths.length) await removeProductImages(uploadedPaths).catch(() => undefined);
+      const message = error instanceof Error ? error.message : "Não foi possível enviar as fotos.";
+      setImageStatus({ kind: "error", text: message });
+      toast.error(message);
+    } finally {
+      setImageBusy(false);
+    }
+  }
+
+  async function handleRemoveProductImage(product: Product, path: string) {
+    setImageBusy(true);
+    setImageStatus({ kind: "working", text: "Removendo a foto..." });
+    try {
+      await removeProductImages([path]);
+      updateProduct(product.id, { imagePaths: (product.imagePaths ?? []).filter((item) => item !== path) });
+      setImageStatus({ kind: "success", text: "Foto removida e alteração salva com sucesso." });
+    } catch (error) {
+      setImageStatus({ kind: "error", text: error instanceof Error ? error.message : "Não foi possível remover a foto." });
+    } finally {
+      setImageBusy(false);
+    }
+  }
+
+  async function handleDeleteProduct(product: Product) {
+    if (!confirm(`Excluir ${product.name} e todo o histórico relacionado?`)) return;
+    try {
+      await removeProductImages(product.imagePaths ?? []);
+      deleteProduct(product.id);
+      toast.success("Produto excluído com sucesso.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível excluir o produto.");
+    }
+  }
+
   if (!loaded) return null;
 
   return (
@@ -196,7 +266,8 @@ export default function ProductsPage() {
                 return (
                   <article key={p.id} className="rounded-xl border border-border/60 bg-card p-4">
                     <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
+                      {p.imagePaths?.[0] && <div className="size-14 shrink-0 rounded-lg bg-muted bg-cover bg-center" style={{ backgroundImage: `url("${productImageUrl(p.imagePaths[0])}")` }} aria-label={`Foto de ${p.name}`} />}
+                      <div className="min-w-0 flex-1">
                         <h3 className="truncate font-semibold">{p.name}</h3>
                         <p className="truncate text-xs text-muted-foreground">{p.sku ? `${p.sku} · ` : ""}{p.category || "Sem categoria"} · {p.supplier || "Sem fornecedor"}</p>
                       </div>
@@ -215,7 +286,7 @@ export default function ProductsPage() {
                       </Button>
                       <Button variant="ghost" size="icon" className="h-11 w-11" aria-label={`Ver ${p.name}`} onClick={() => setDetailId(p.id)}><Eye className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" className="h-11 w-11" aria-label={`Editar ${p.name}`} onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" className="h-11 w-11" aria-label={`Excluir ${p.name}`} onClick={() => deleteProduct(p.id)}><Trash2 className="h-4 w-4 text-orbi-rose" /></Button>
+                      <Button variant="ghost" size="icon" className="h-11 w-11" aria-label={`Excluir ${p.name}`} onClick={() => handleDeleteProduct(p)}><Trash2 className="h-4 w-4 text-orbi-rose" /></Button>
                     </div>
                   </article>
                 );
@@ -246,7 +317,7 @@ export default function ProductsPage() {
                     const margin = p.salePrice > 0 ? profit / p.salePrice : 0;
                     return (
                       <TableRow key={p.id}>
-                        <TableCell className="font-medium"><button className="text-left hover:underline" onClick={() => setDetailId(p.id)}>{p.name}</button>{p.sku && <p className="text-xs font-normal text-muted-foreground">{p.sku}</p>}</TableCell>
+                        <TableCell className="font-medium"><div className="flex items-center gap-2">{p.imagePaths?.[0] && <div className="size-9 shrink-0 rounded-md bg-muted bg-cover bg-center" style={{ backgroundImage: `url("${productImageUrl(p.imagePaths[0])}")` }} />}<div><button className="text-left hover:underline" onClick={() => setDetailId(p.id)}>{p.name}</button>{p.sku && <p className="text-xs font-normal text-muted-foreground">{p.sku}</p>}</div></div></TableCell>
                         <TableCell>{p.category}</TableCell>
                         <TableCell>{p.supplier}</TableCell>
                         <TableCell className="text-center">{stock} {p.unit ?? "un."}</TableCell>
@@ -264,7 +335,7 @@ export default function ProductsPage() {
                           <div className="flex justify-end gap-1">
                             <Button variant="ghost" size="icon" onClick={() => openMovement(p.id)}><ArrowDownToLine className="h-4 w-4" /></Button>
                             <Button variant="ghost" size="icon" onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" onClick={() => deleteProduct(p.id)}><Trash2 className="h-4 w-4 text-orbi-rose" /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteProduct(p)}><Trash2 className="h-4 w-4 text-orbi-rose" /></Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -396,6 +467,38 @@ export default function ProductsPage() {
             const status = productStockStatus(selectedProduct, sales, stockMovements);
             return <>
               <DialogHeader><DialogTitle>{selectedProduct.name}</DialogTitle></DialogHeader>
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-3">
+                  {(selectedProduct.imagePaths ?? []).map((path, index) => (
+                    <div key={path} className="relative aspect-square rounded-xl border border-border/50 bg-muted bg-cover bg-center" style={{ backgroundImage: `url("${productImageUrl(path)}")` }}>
+                      {index === 0 && <Badge className="absolute left-2 top-2 bg-primary">Capa</Badge>}
+                      <Button type="button" variant="destructive" size="icon-sm" className="absolute right-2 top-2 opacity-90" disabled={imageBusy} aria-label={`Remover foto ${index + 1}`} onClick={() => handleRemoveProductImage(selectedProduct, path)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  {(selectedProduct.imagePaths?.length ?? 0) < MAX_PRODUCT_IMAGES && (
+                    <label className={`flex aspect-square cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border text-center transition-colors hover:border-primary/50 hover:bg-primary/5 ${imageBusy ? "pointer-events-none opacity-60" : ""}`}>
+                      <ImagePlus className="mb-2 h-7 w-7 text-primary" />
+                      <span className="text-sm font-medium">{imageBusy ? "Processando..." : "Adicionar foto"}</span>
+                      <span className="mt-1 px-2 text-[11px] text-muted-foreground">Galeria, câmera ou arquivos</span>
+                      <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="sr-only" onChange={(event) => handleProductImages(event, selectedProduct)} />
+                    </label>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">Até 3 fotos. Imagens grandes são reduzidas automaticamente antes do envio.</p>
+                {imageStatus && (
+                  <div role="status" className={`rounded-lg border p-3 text-sm ${
+                    imageStatus.kind === "success"
+                      ? "border-orbi-emerald/40 bg-orbi-emerald/10 text-orbi-emerald"
+                      : imageStatus.kind === "error"
+                        ? "border-orbi-rose/40 bg-orbi-rose/10 text-orbi-rose"
+                        : "border-primary/30 bg-primary/5 text-foreground"
+                  }`}>
+                    {imageStatus.text}
+                  </div>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <MobileMetric label="Estoque atual" value={`${stock} ${selectedProduct.unit ?? "un."}`} highlight={status !== "ok"} />
                 <MobileMetric label="Total vendido" value={`${sold} ${selectedProduct.unit ?? "un."}`} />

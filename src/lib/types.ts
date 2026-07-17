@@ -69,6 +69,7 @@ export interface Product {
   costPrice: number;
   salePrice: number;
   active?: boolean;
+  imagePaths?: string[];
   createdAt: string;
 }
 
