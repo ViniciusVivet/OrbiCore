@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createEmptyData, normalizeData, removeProductWithReferences } from "./data";
 import { profileInitials } from "./profile-image";
+import { formatFileSize } from "./image-optimizer";
 
 describe("dados da aplicação", () => {
   it("cria uma conta nova sem dados de demonstração", () => {
@@ -34,5 +35,10 @@ describe("dados da aplicação", () => {
     expect(profileInitials("Maria Silva")).toBe("MS");
     expect(profileInitials("Orbitamos Tecnologia")).toBe("OT");
     expect(profileInitials("")).toBe("OC");
+  });
+
+  it("apresenta tamanhos de imagem de forma compreensível", () => {
+    expect(formatFileSize(240 * 1024)).toBe("240 KB");
+    expect(formatFileSize(2.5 * 1024 * 1024)).toBe("2.5 MB");
   });
 });

@@ -12,6 +12,8 @@ import { useTheme, ThemeKey } from "@/components/theme-provider";
 import { toast } from "sonner";
 import { ModuleKey } from "@/lib/types";
 import { profileImageUrl, profileInitials, removeProfileImage, uploadProfileImage } from "@/lib/profile-image";
+import { formatFileSize, optimizeImage } from "@/lib/image-optimizer";
+import { removeProductImages } from "@/lib/product-images";
 
 const THEMES: { key: ThemeKey; label: string; description: string; icon: React.ReactNode; preview: string[] }[] = [
   {
@@ -56,6 +58,7 @@ export default function SettingsPage() {
   const [year, setYear] = useState(2026);
   const [enabledModules, setEnabledModules] = useState<ModuleKey[]>([]);
   const [imageBusy, setImageBusy] = useState(false);
+  const [imageStatus, setImageStatus] = useState<{ kind: "working" | "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     if (loaded) {
@@ -84,6 +87,7 @@ export default function SettingsPage() {
   async function handleReset() {
     if (confirm("Isso vai apagar TODOS os dados da conta. Tem certeza?")) {
       await removeProfileImage(data.profile.imagePath).catch(() => undefined);
+      await removeProductImages(data.products.flatMap((product) => product.imagePaths ?? [])).catch(() => undefined);
       resetData();
       toast.success("Dados apagados!");
     }
@@ -94,12 +98,22 @@ export default function SettingsPage() {
     event.target.value = "";
     if (!file) return;
     setImageBusy(true);
+    setImageStatus({ kind: "working", text: "Preparando e reduzindo a foto..." });
     try {
-      const imagePath = await uploadProfileImage(file, data.profile.imagePath);
+      const optimized = await optimizeImage(file, {
+        maxDimension: 1000,
+        targetBytes: 220 * 1024,
+        maxBytes: 400 * 1024,
+      });
+      setImageStatus({ kind: "working", text: `Foto reduzida de ${formatFileSize(optimized.originalBytes)} para ${formatFileSize(optimized.optimizedBytes)}. Enviando...` });
+      const imagePath = await uploadProfileImage(optimized.file, data.profile.imagePath);
       updateProfile({ imagePath });
+      setImageStatus({ kind: "success", text: "Foto atualizada e salva com sucesso. Não é necessário clicar em Salvar." });
       toast.success("Imagem atualizada!");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Falha ao enviar a imagem.");
+      const message = error instanceof Error ? error.message : "Falha ao enviar a imagem.";
+      setImageStatus({ kind: "error", text: message });
+      toast.error(message);
     } finally {
       setImageBusy(false);
     }
@@ -107,19 +121,24 @@ export default function SettingsPage() {
 
   async function handleImageRemove() {
     setImageBusy(true);
+    setImageStatus({ kind: "working", text: "Removendo a foto..." });
     try {
       await removeProfileImage(data.profile.imagePath);
       updateProfile({ imagePath: undefined });
+      setImageStatus({ kind: "success", text: "Foto removida e alteração salva com sucesso." });
       toast.success("Imagem removida!");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Falha ao remover a imagem.");
+      const message = error instanceof Error ? error.message : "Falha ao remover a imagem.";
+      setImageStatus({ kind: "error", text: message });
+      toast.error(message);
     } finally {
       setImageBusy(false);
     }
   }
 
-  function handleLoadDemo() {
+  async function handleLoadDemo() {
     if (confirm("Isso vai substituir TODOS os dados atuais pela demonstração. Continuar?")) {
+      await removeProductImages(data.products.flatMap((product) => product.imagePaths ?? [])).catch(() => undefined);
       loadDemoData();
       toast.success("Dados de demonstração carregados!");
     }
@@ -163,7 +182,7 @@ export default function SettingsPage() {
               <div>
                 <p className="text-sm font-medium">Imagem do perfil</p>
                 <p className="text-xs text-muted-foreground">
-                  Use sua foto ou o logo da empresa. JPG, PNG, WebP ou GIF, até 2 MB.
+                  Use sua foto ou o logo da empresa. Nós reduzimos imagens grandes automaticamente.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -171,7 +190,7 @@ export default function SettingsPage() {
                   <Upload className="h-4 w-4" />
                   {imageBusy ? "Enviando..." : "Enviar imagem"}
                 </Button>
-                <input id="profile-image" type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={handleImageUpload} />
+                <input id="profile-image" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={handleImageUpload} />
                 {data.profile.imagePath && (
                   <Button type="button" variant="ghost" size="sm" disabled={imageBusy} onClick={handleImageRemove}>
                     <Trash2 className="h-4 w-4" />
@@ -179,6 +198,17 @@ export default function SettingsPage() {
                   </Button>
                 )}
               </div>
+              {imageStatus && (
+                <div role="status" className={`rounded-lg border p-3 text-sm ${
+                  imageStatus.kind === "success"
+                    ? "border-orbi-emerald/40 bg-orbi-emerald/10 text-orbi-emerald"
+                    : imageStatus.kind === "error"
+                      ? "border-orbi-rose/40 bg-orbi-rose/10 text-orbi-rose"
+                      : "border-primary/30 bg-primary/5 text-foreground"
+                }`}>
+                  {imageStatus.text}
+                </div>
+              )}
             </div>
           </div>
           <div className="space-y-2">
