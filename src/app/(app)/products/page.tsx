@@ -42,11 +42,12 @@ const emptyForm: FormData = {
 };
 
 export default function ProductsPage() {
-  const { data, loaded, addProduct, updateProduct, deleteProduct, addStockMovement, deleteStockMovement } = useAppStore();
+  const { data, loaded, addProduct, updateProduct, deleteProduct, addStockMovement, updateStockMovement, deleteStockMovement } = useAppStore();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormData>(emptyForm);
   const [movementOpen, setMovementOpen] = useState(false);
+  const [editingMovementId, setEditingMovementId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -113,18 +114,43 @@ export default function ProductsPage() {
   function openMovement(productId = products[0]?.id ?? "") {
     const product = products.find((item) => item.id === productId);
     const suggestion = product ? suggestedRestockQuantity(product, sales, stockMovements) : 0;
+    setEditingMovementId(null);
     setMovement({ productId, date: new Date().toISOString().split("T")[0], type: "Entrada", quantity: suggestion || 1, unitCost: product?.costPrice ?? 0, reason: "Reposição", note: "" });
+    setMovementOpen(true);
+  }
+
+  function openMovementEdit(item: StockMovement) {
+    setEditingMovementId(item.id);
+    setMovement({
+      productId: item.productId,
+      date: item.date,
+      type: item.type,
+      quantity: Math.abs(item.quantity),
+      unitCost: item.unitCost ?? 0,
+      reason: item.reason ?? "Correção",
+      note: item.note ?? "",
+    });
     setMovementOpen(true);
   }
 
   function handleMovement() {
     if (!movement.productId || movement.quantity === 0) return;
     const product = products.find((item) => item.id === movement.productId);
-    if (movement.type === "Baixa" && product && movement.quantity > productStock(product, sales, stockMovements)) {
+    const movementsWithoutCurrent = editingMovementId
+      ? stockMovements.filter((item) => item.id !== editingMovementId)
+      : stockMovements;
+    if (movement.type === "Baixa" && product && movement.quantity > productStock(product, sales, movementsWithoutCurrent)) {
       toast.error("A saída é maior que o estoque disponível.");
       return;
     }
-    addStockMovement({ ...movement, quantity: Math.abs(movement.quantity) });
+    const payload = { ...movement, quantity: Math.abs(movement.quantity) };
+    if (editingMovementId) {
+      updateStockMovement(editingMovementId, payload);
+      toast.success("Movimentação atualizada e estoque recalculado.");
+    } else {
+      addStockMovement(payload);
+      toast.success("Movimentação registrada e estoque atualizado.");
+    }
     setMovementOpen(false);
   }
 
@@ -416,7 +442,7 @@ export default function ProductsPage() {
 
       <Dialog open={movementOpen} onOpenChange={setMovementOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Movimentar estoque</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingMovementId ? "Editar movimentação" : "Movimentar estoque"}</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="space-y-2">
               <Label>Produto</Label>
@@ -454,7 +480,7 @@ export default function ProductsPage() {
             </div>
             <div className="space-y-2"><Label>Observação</Label><Input value={movement.note} onChange={(e) => setMovement({ ...movement, note: e.target.value })} placeholder="Ex: compra no fornecedor" /></div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setMovementOpen(false)}>Cancelar</Button><Button onClick={handleMovement}>Salvar movimentação</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={() => setMovementOpen(false)}>Cancelar</Button><Button onClick={handleMovement}>{editingMovementId ? "Salvar alterações" : "Salvar movimentação"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -513,7 +539,7 @@ export default function ProductsPage() {
               </div>
               <div>
                 <h3 className="mb-2 font-semibold">Histórico de estoque</h3>
-                {movements.length === 0 ? <p className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">Nenhuma movimentação registrada.</p> : <div className="max-h-52 space-y-2 overflow-y-auto">{movements.map((item) => <div key={item.id} className="flex items-center justify-between rounded-lg border border-border/50 p-3 text-sm"><div><p className="font-medium">{item.reason ?? item.type}</p><p className="text-xs text-muted-foreground">{item.date}{item.note ? ` · ${item.note}` : ""}</p></div><span className={item.type === "Entrada" ? "font-semibold text-orbi-emerald" : "font-semibold text-orbi-rose"}>{item.type === "Entrada" ? "+" : "−"}{item.quantity}</span></div>)}</div>}
+                {movements.length === 0 ? <p className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">Nenhuma movimentação registrada.</p> : <div className="max-h-52 space-y-2 overflow-y-auto">{movements.map((item) => <div key={item.id} className="flex items-center justify-between rounded-lg border border-border/50 p-3 text-sm"><div><p className="font-medium">{item.reason ?? item.type}</p><p className="text-xs text-muted-foreground">{item.date}{item.note ? ` · ${item.note}` : ""}</p></div><div className="flex items-center gap-2"><span className={item.type === "Entrada" ? "font-semibold text-orbi-emerald" : "font-semibold text-orbi-rose"}>{item.type === "Entrada" ? "+" : "−"}{item.quantity}</span><Button variant="ghost" size="icon-sm" aria-label="Editar movimentação" onClick={() => openMovementEdit(item)}><Pencil className="h-3.5 w-3.5" /></Button></div></div>)}</div>}
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => openEdit(selectedProduct)}><Pencil className="h-4 w-4" />Editar</Button>
@@ -533,7 +559,7 @@ export default function ProductsPage() {
                 const product = products.find((p) => p.id === item.productId);
                 return <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/50 p-3">
                   <div className="min-w-0"><p className="truncate text-sm font-medium">{product?.name ?? "Produto removido"}</p><p className="truncate text-xs text-muted-foreground">{item.date} · {item.reason || item.note || item.type}</p></div>
-                  <div className="flex shrink-0 items-center gap-2"><span className={`font-semibold ${item.type === "Entrada" || (item.type === "Ajuste" && item.quantity > 0) ? "text-orbi-emerald" : "text-orbi-rose"}`}>{item.type === "Entrada" ? "+" : item.type === "Baixa" ? "−" : item.quantity > 0 ? "+" : ""}{item.quantity}</span><Button variant="ghost" size="icon-sm" aria-label="Excluir movimentação" onClick={() => deleteStockMovement(item.id)}><Trash2 className="h-3.5 w-3.5" /></Button></div>
+                  <div className="flex shrink-0 items-center gap-2"><span className={`font-semibold ${item.type === "Entrada" || (item.type === "Ajuste" && item.quantity > 0) ? "text-orbi-emerald" : "text-orbi-rose"}`}>{item.type === "Entrada" ? "+" : item.type === "Baixa" ? "−" : item.quantity > 0 ? "+" : ""}{item.quantity}</span><Button variant="ghost" size="icon-sm" aria-label="Editar movimentação" onClick={() => openMovementEdit(item)}><Pencil className="h-3.5 w-3.5" /></Button><Button variant="ghost" size="icon-sm" aria-label="Excluir movimentação" onClick={() => deleteStockMovement(item.id)}><Trash2 className="h-3.5 w-3.5" /></Button></div>
                 </div>;
               })}
             </div>
