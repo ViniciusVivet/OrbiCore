@@ -92,9 +92,16 @@ export default function DashboardPage() {
     : `Ano ${year}`;
 
   // --- Goals ---
-  const yearlyGoal = profile.yearlyGoal;
-  const monthlyGoal = yearlyGoal / 12;
-  const quarterlyGoal = yearlyGoal / 4;
+  const goalPlan = data.goalPlans.find((plan) => plan.year === year);
+  const yearlyGoal = goalPlan
+    ? goalPlan.monthlyRevenueGoals.reduce((sum, value) => sum + value, 0)
+    : profile.yearlyGoal;
+  const monthlyGoal = goalPlan?.monthlyRevenueGoals[selectedMonth - 1] ?? yearlyGoal / 12;
+  const quarterlyGoal = goalPlan
+    ? goalPlan.monthlyRevenueGoals
+      .slice((selectedQuarter - 1) * 3, selectedQuarter * 3)
+      .reduce((sum, value) => sum + value, 0)
+    : yearlyGoal / 4;
 
   const periodGoal = periodView === "month" ? monthlyGoal
     : periodView === "quarter" ? quarterlyGoal

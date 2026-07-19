@@ -234,6 +234,13 @@ export function useStore() {
     }));
   }, [update]);
 
+  const updateSale = useCallback((id: string, s: Partial<Sale>) => {
+    update((d) => ({
+      ...d,
+      sales: d.sales.map((x) => (x.id === id ? { ...x, ...s } : x)),
+    }));
+  }, [update]);
+
   const deleteSale = useCallback((id: string) => {
     update((d) => ({ ...d, sales: d.sales.filter((x) => x.id !== id) }));
   }, [update]);
@@ -247,6 +254,24 @@ export function useStore() {
         id: generateId(),
         createdAt: new Date().toISOString(),
       }],
+    }));
+  }, [update]);
+
+  const updateStockMovement = useCallback((id: string, movement: Partial<StockMovement>) => {
+    update((d) => ({
+      ...d,
+      stockMovements: (d.stockMovements ?? []).map((x) =>
+        x.id === id ? { ...x, ...movement } : x
+      ),
+    }));
+  }, [update]);
+
+  const upsertGoalPlan = useCallback((plan: AppData["goalPlans"][number]) => {
+    update((d) => ({
+      ...d,
+      goalPlans: d.goalPlans.some((item) => item.year === plan.year)
+        ? d.goalPlans.map((item) => item.year === plan.year ? plan : item)
+        : [...d.goalPlans, plan],
     }));
   }, [update]);
 
@@ -305,9 +330,12 @@ export function useStore() {
     updateProduct,
     deleteProduct,
     addSale,
+    updateSale,
     deleteSale,
     addStockMovement,
+    updateStockMovement,
     deleteStockMovement,
+    upsertGoalPlan,
     upsertPayroll,
     resetData,
     loadDemoData,

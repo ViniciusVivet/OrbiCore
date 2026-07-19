@@ -304,9 +304,11 @@ export function suggestedRestockQuantity(
 }
 
 export function saleProfitAndMargin(sale: Sale, product: Product) {
-  const profit = (product.salePrice - product.costPrice) * sale.quantity;
-  const margin = product.salePrice > 0 ? (product.salePrice - product.costPrice) / product.salePrice : 0;
-  return { profit, margin, revenue: product.salePrice * sale.quantity, cost: product.costPrice * sale.quantity };
+  const unitSalePrice = sale.unitSalePrice ?? product.salePrice;
+  const unitCostPrice = sale.unitCostPrice ?? product.costPrice;
+  const profit = (unitSalePrice - unitCostPrice) * sale.quantity;
+  const margin = unitSalePrice > 0 ? (unitSalePrice - unitCostPrice) / unitSalePrice : 0;
+  return { profit, margin, revenue: unitSalePrice * sale.quantity, cost: unitCostPrice * sale.quantity };
 }
 
 // =============================================

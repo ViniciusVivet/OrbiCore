@@ -78,6 +78,8 @@ export interface Sale {
   date: string;
   productId: string;
   quantity: number;
+  unitSalePrice?: number;
+  unitCostPrice?: number;
   createdAt: string;
 }
 
@@ -117,6 +119,15 @@ export interface PayrollMonth {
 }
 
 // --- Metas ---
+export interface GoalPlan {
+  year: number;
+  monthlyRevenueGoals: number[];
+  monthlyMeetingGoals: number[];
+  monthlyCloseRateTargets: number[];
+  monthlyNewContractGoals: number[];
+  monthlySalesRevenueGoals: number[];
+}
+
 // --- Organizacao / Perfil ---
 export type ModuleKey =
   | "dashboard"
@@ -156,4 +167,5 @@ export interface AppData {
   sales: Sale[];
   stockMovements: StockMovement[];
   payroll: PayrollMonth[];
+  goalPlans: GoalPlan[];
 }

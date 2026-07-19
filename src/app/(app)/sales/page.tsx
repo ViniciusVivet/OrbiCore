@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, ShoppingCart, TrendingUp, DollarSign, BarChart3, ArrowRight } from "lucide-react";
+import { Plus, Trash2, Pencil, ShoppingCart, TrendingUp, DollarSign, BarChart3, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useAppStore } from "@/components/store-provider";
 import { currency, dateFormat, percent } from "@/lib/format";
@@ -19,12 +19,15 @@ import { toast } from "sonner";
 type FormData = Omit<Sale, "id" | "createdAt">;
 
 export default function SalesPage() {
-  const { data, loaded, addSale, deleteSale } = useAppStore();
+  const { data, loaded, addSale, updateSale, deleteSale } = useAppStore();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormData>({
     date: new Date().toISOString().split("T")[0],
     productId: "",
     quantity: 1,
+    unitSalePrice: 0,
+    unitCostPrice: 0,
   });
 
   if (!loaded) return null;
@@ -50,18 +53,35 @@ export default function SalesPage() {
   const avgMargin = totalRevenue > 0 ? totalProfit / totalRevenue : 0;
 
   function openNew() {
-    setForm({ date: new Date().toISOString().split("T")[0], productId: products[0]?.id || "", quantity: 1 });
+    const product = products[0];
+    setEditingId(null);
+    setForm({ date: new Date().toISOString().split("T")[0], productId: product?.id || "", quantity: 1, unitSalePrice: product?.salePrice ?? 0, unitCostPrice: product?.costPrice ?? 0 });
+    setDialogOpen(true);
+  }
+
+  function openEdit(sale: Sale) {
+    const product = products.find((item) => item.id === sale.productId);
+    setEditingId(sale.id);
+    setForm({ date: sale.date, productId: sale.productId, quantity: sale.quantity, unitSalePrice: sale.unitSalePrice ?? product?.salePrice ?? 0, unitCostPrice: sale.unitCostPrice ?? product?.costPrice ?? 0 });
     setDialogOpen(true);
   }
 
   function handleSave() {
     if (!form.productId || !form.quantity) return;
     const product = products.find((item) => item.id === form.productId);
-    if (!product || form.quantity > productStock(product, sales, stockMovements)) {
+    const previous = editingId ? sales.find((sale) => sale.id === editingId) : undefined;
+    const available = product ? productStock(product, sales, stockMovements) + (previous?.productId === product.id ? previous.quantity : 0) : 0;
+    if (!product || form.quantity > available) {
       toast.error("Quantidade maior que o estoque disponível.");
       return;
     }
-    addSale(form);
+    if (editingId) {
+      updateSale(editingId, form);
+      toast.success("Venda atualizada. Estoque, cards e gráficos foram recalculados.");
+    } else {
+      addSale(form);
+      toast.success("Venda registrada e indicadores atualizados.");
+    }
     setDialogOpen(false);
   }
 
@@ -149,7 +169,7 @@ export default function SalesPage() {
                   if (!product) return null;
                   const { revenue, profit, margin } = saleProfitAndMargin(sale, product);
                   return <article key={sale.id} className="rounded-xl border border-border/60 p-4">
-                    <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate font-semibold">{product.name}</h3><p className="text-xs text-muted-foreground">{dateFormat(sale.date)} · {sale.quantity} un.</p></div><Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" aria-label={`Excluir venda de ${product.name}`} onClick={() => deleteSale(sale.id)}><Trash2 className="h-4 w-4 text-orbi-rose" /></Button></div>
+                    <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate font-semibold">{product.name}</h3><p className="text-xs text-muted-foreground">{dateFormat(sale.date)} · {sale.quantity} un.</p></div><div className="flex"><Button variant="ghost" size="icon" className="h-11 w-11" aria-label={`Editar venda de ${product.name}`} onClick={() => openEdit(sale)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-11 w-11" aria-label={`Excluir venda de ${product.name}`} onClick={() => deleteSale(sale.id)}><Trash2 className="h-4 w-4 text-orbi-rose" /></Button></div></div>
                     <div className="mt-3 grid grid-cols-3 gap-2"><SaleMetric label="Receita" value={currency(revenue)} /><SaleMetric label="Lucro" value={currency(profit)} positive /><SaleMetric label="Margem" value={percent(margin, 0)} /></div>
                   </article>;
                 })}
@@ -178,12 +198,15 @@ export default function SalesPage() {
                           <TableCell className="whitespace-nowrap">{dateFormat(sale.date)}</TableCell>
                           <TableCell className="font-medium">{product.name}</TableCell>
                           <TableCell className="text-center">{sale.quantity}</TableCell>
-                          <TableCell className="text-right">{currency(product.costPrice)}</TableCell>
-                          <TableCell className="text-right">{currency(product.salePrice)}</TableCell>
+                          <TableCell className="text-right">{currency(sale.unitCostPrice ?? product.costPrice)}</TableCell>
+                          <TableCell className="text-right">{currency(sale.unitSalePrice ?? product.salePrice)}</TableCell>
                           <TableCell className="text-right">{currency(cost)}</TableCell>
                           <TableCell className="text-right text-orbi-emerald">{currency(profit)}</TableCell>
                           <TableCell className="text-center">{percent(margin, 0)}</TableCell>
                           <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" onClick={() => openEdit(sale)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
                             <Button variant="ghost" size="icon" onClick={() => deleteSale(sale.id)}>
                               <Trash2 className="h-4 w-4 text-orbi-rose" />
                             </Button>
@@ -203,7 +226,7 @@ export default function SalesPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Nova Venda</DialogTitle>
+            <DialogTitle>{editingId ? "Editar venda" : "Nova Venda"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
@@ -212,7 +235,10 @@ export default function SalesPage() {
             </div>
             <div className="space-y-2">
               <Label>Produto</Label>
-              <Select value={form.productId || ""} onValueChange={(v: string | null) => setForm({ ...form, productId: v ?? "" })}>
+              <Select value={form.productId || ""} onValueChange={(v: string | null) => {
+                const product = products.find((item) => item.id === v);
+                setForm({ ...form, productId: v ?? "", unitSalePrice: product?.salePrice ?? 0, unitCostPrice: product?.costPrice ?? 0 });
+              }}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
                   {products.map((p) => (
@@ -225,14 +251,26 @@ export default function SalesPage() {
               <Label>Quantidade</Label>
               <Input type="number" min="1" value={form.quantity || ""} onChange={(e) => setForm({ ...form, quantity: parseInt(e.target.value) || 0 })} />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Custo unitário</Label>
+                <Input type="number" min="0" step="0.01" value={form.unitCostPrice ?? ""} onChange={(e) => setForm({ ...form, unitCostPrice: Number(e.target.value) || 0 })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Preço da venda</Label>
+                <Input type="number" min="0" step="0.01" value={form.unitSalePrice ?? ""} onChange={(e) => setForm({ ...form, unitSalePrice: Number(e.target.value) || 0 })} />
+              </div>
+            </div>
             {form.productId && (() => {
               const p = products.find((x) => x.id === form.productId);
               if (!p) return null;
-              const profit = (p.salePrice - p.costPrice) * (form.quantity || 0);
+              const salePrice = form.unitSalePrice ?? p.salePrice;
+              const costPrice = form.unitCostPrice ?? p.costPrice;
+              const profit = (salePrice - costPrice) * (form.quantity || 0);
               return (
                 <div className="rounded-lg bg-muted p-3 space-y-1">
                   <p className="text-sm text-muted-foreground">Prévia da venda:</p>
-                  <p className="text-sm">Receita: <span className="font-medium">{currency(p.salePrice * (form.quantity || 0))}</span></p>
+                  <p className="text-sm">Receita: <span className="font-medium">{currency(salePrice * (form.quantity || 0))}</span></p>
                   <p className="text-sm">Lucro: <span className="font-medium text-orbi-emerald">{currency(profit)}</span></p>
                 </div>
               );
@@ -240,7 +278,7 @@ export default function SalesPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave}>Registrar</Button>
+            <Button onClick={handleSave}>{editingId ? "Salvar alterações" : "Registrar"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -9,11 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Save, TrendingUp, Users, ShoppingCart, FileText, Pencil, Check } from "lucide-react";
 import { useAppStore } from "@/components/store-provider";
 import { currency, percent, shortMonthName, monthName } from "@/lib/format";
-import { mrrInMonth, mrrInQuarter, mrrEnteringYear, activeContractsCount, weightedPipelineRevenue } from "@/lib/calculations";
+import { mrrInMonth, mrrInQuarter, mrrEnteringYear, activeContractsCount, weightedPipelineRevenue, saleProfitAndMargin } from "@/lib/calculations";
 import { toast } from "sonner";
+import type { GoalPlan } from "@/lib/types";
+
+const repeat = (value: number) => Array.from({ length: 12 }, () => value);
 
 export default function GoalsPage() {
-  const { data, loaded, updateProfile } = useAppStore();
+  const { data, loaded, updateProfile, upsertGoalPlan } = useAppStore();
   const [yearlyGoal, setYearlyGoal] = useState(0);
   const [meetingGoalMonthly, setMeetingGoalMonthly] = useState(0);
   const [closeRateTarget, setCloseRateTarget] = useState(0);
@@ -22,18 +25,49 @@ export default function GoalsPage() {
   const [selectedYear, setSelectedYear] = useState(0);
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [monthlyRevenueGoals, setMonthlyRevenueGoals] = useState<number[]>(repeat(0));
+  const [monthlyMeetingGoals, setMonthlyMeetingGoals] = useState<number[]>(repeat(0));
+  const [monthlyCloseRateTargets, setMonthlyCloseRateTargets] = useState<number[]>(repeat(0));
+  const [monthlyNewContractGoals, setMonthlyNewContractGoals] = useState<number[]>(repeat(0));
+  const [monthlySalesRevenueGoals, setMonthlySalesRevenueGoals] = useState<number[]>(repeat(0));
 
   useEffect(() => {
-    if (loaded) {
-      const p = data.profile;
-      setYearlyGoal(p.yearlyGoal);
-      setSelectedYear(p.currentYear);
-      setMeetingGoalMonthly(p.meetingGoalMonthly ?? 20);
-      setCloseRateTarget(p.closeRateTarget ?? 0.25);
-      setNewContractsMonthly(p.newContractsMonthly ?? 3);
-      setSalesRevenueMonthly(p.salesRevenueMonthly ?? 10000);
+    if (loaded && selectedYear === 0) {
+      setSelectedYear(data.profile.currentYear);
     }
-  }, [loaded, data.profile]);
+  }, [loaded, selectedYear, data.profile.currentYear]);
+
+  useEffect(() => {
+    if (loaded && selectedYear) {
+      const p = data.profile;
+      const plan = data.goalPlans.find((item) => item.year === selectedYear);
+      const revenue = plan?.monthlyRevenueGoals ?? repeat(p.yearlyGoal / 12);
+      const meetings = plan?.monthlyMeetingGoals ?? repeat(p.meetingGoalMonthly ?? 20);
+      const closeRates = plan?.monthlyCloseRateTargets ?? repeat(p.closeRateTarget ?? 0.25);
+      const contracts = plan?.monthlyNewContractGoals ?? repeat(p.newContractsMonthly ?? 3);
+      const sales = plan?.monthlySalesRevenueGoals ?? repeat(p.salesRevenueMonthly ?? 10000);
+      setMonthlyRevenueGoals(revenue);
+      setMonthlyMeetingGoals(meetings);
+      setMonthlyCloseRateTargets(closeRates);
+      setMonthlyNewContractGoals(contracts);
+      setMonthlySalesRevenueGoals(sales);
+      setYearlyGoal(revenue.reduce((sum, value) => sum + value, 0));
+      const monthIndex = new Date().getMonth();
+      setMeetingGoalMonthly(meetings[monthIndex] ?? 0);
+      setCloseRateTarget(closeRates[monthIndex] ?? 0);
+      setNewContractsMonthly(contracts[monthIndex] ?? 0);
+      setSalesRevenueMonthly(sales[monthIndex] ?? 0);
+    }
+  }, [loaded, selectedYear, data.goalPlans, data.profile]);
+
+  useEffect(() => {
+    const index = new Date().getMonth();
+    setYearlyGoal(monthlyRevenueGoals.reduce((sum, value) => sum + value, 0));
+    setMeetingGoalMonthly(monthlyMeetingGoals[index] ?? 0);
+    setCloseRateTarget(monthlyCloseRateTargets[index] ?? 0);
+    setNewContractsMonthly(monthlyNewContractGoals[index] ?? 0);
+    setSalesRevenueMonthly(monthlySalesRevenueGoals[index] ?? 0);
+  }, [monthlyRevenueGoals, monthlyMeetingGoals, monthlyCloseRateTargets, monthlyNewContractGoals, monthlySalesRevenueGoals]);
 
   if (!loaded) return null;
 
@@ -42,21 +76,43 @@ export default function GoalsPage() {
   const currentMonth = new Date().getMonth() + 1;
   const currentQuarter = Math.ceil(currentMonth / 3);
 
-  const monthlyGoal = yearlyGoal / 12;
-  const quarterlyGoal = yearlyGoal / 4;
+  const monthIndex = currentMonth - 1;
+  const monthlyGoal = monthlyRevenueGoals[monthIndex] ?? 0;
+  const quarterlyGoal = monthlyRevenueGoals
+    .slice((currentQuarter - 1) * 3, currentQuarter * 3)
+    .reduce((sum, value) => sum + value, 0);
 
   function saveAll() {
+    const plan: GoalPlan = {
+      year,
+      monthlyRevenueGoals,
+      monthlyMeetingGoals,
+      monthlyCloseRateTargets,
+      monthlyNewContractGoals,
+      monthlySalesRevenueGoals,
+    };
+    upsertGoalPlan(plan);
     updateProfile({
-      yearlyGoal,
-      meetingGoalMonthly,
-      closeRateTarget,
-      newContractsMonthly,
-      salesRevenueMonthly,
+      ...(year === data.profile.currentYear ? {
+        yearlyGoal,
+        meetingGoalMonthly: monthlyMeetingGoals[new Date().getMonth()] ?? 0,
+        closeRateTarget: monthlyCloseRateTargets[new Date().getMonth()] ?? 0,
+        newContractsMonthly: monthlyNewContractGoals[new Date().getMonth()] ?? 0,
+        salesRevenueMonthly: monthlySalesRevenueGoals[new Date().getMonth()] ?? 0,
+      } : {}),
     });
     setEditingSection(null);
     setSaved(true);
     toast.success("Metas salvas com sucesso!");
     setTimeout(() => setSaved(false), 2000);
+  }
+
+  function updateMonth(
+    setter: React.Dispatch<React.SetStateAction<number[]>>,
+    month: number,
+    value: number
+  ) {
+    setter((current) => current.map((item, index) => index === month ? value : item));
   }
 
   // Current metrics for comparison
@@ -111,6 +167,32 @@ export default function GoalsPage() {
         </div>
       </div>
 
+      <Card className="border-border/50">
+        <CardHeader>
+          <CardTitle className="text-base">Planejamento mensal de {year}</CardTitle>
+          <CardDescription>Edite qualquer mês passado ou futuro. Os comparativos usam a meta correspondente ao período.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <div className="min-w-[760px] space-y-2">
+              <div className="grid grid-cols-[80px_repeat(5,1fr)] gap-2 px-1 text-xs text-muted-foreground">
+                <span>Mês</span><span>MRR (R$)</span><span>Reuniões</span><span>Conversão (%)</span><span>Contratos</span><span>Vendas (R$)</span>
+              </div>
+              {Array.from({ length: 12 }, (_, index) => (
+                <div key={index} className="grid grid-cols-[80px_repeat(5,1fr)] items-center gap-2">
+                  <span className="text-sm font-medium">{shortMonthName(index + 1)}</span>
+                  <Input type="number" min="0" step="0.01" value={monthlyRevenueGoals[index] || ""} onChange={(e) => updateMonth(setMonthlyRevenueGoals, index, Number(e.target.value) || 0)} />
+                  <Input type="number" min="0" value={monthlyMeetingGoals[index] || ""} onChange={(e) => updateMonth(setMonthlyMeetingGoals, index, Number(e.target.value) || 0)} />
+                  <Input type="number" min="0" max="100" value={Math.round((monthlyCloseRateTargets[index] ?? 0) * 100) || ""} onChange={(e) => updateMonth(setMonthlyCloseRateTargets, index, (Number(e.target.value) || 0) / 100)} />
+                  <Input type="number" min="0" value={monthlyNewContractGoals[index] || ""} onChange={(e) => updateMonth(setMonthlyNewContractGoals, index, Number(e.target.value) || 0)} />
+                  <Input type="number" min="0" step="0.01" value={monthlySalesRevenueGoals[index] || ""} onChange={(e) => updateMonth(setMonthlySalesRevenueGoals, index, Number(e.target.value) || 0)} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* MRR Goals */}
       <Card className="border-border/50">
         <CardHeader className="pb-4">
@@ -144,7 +226,11 @@ export default function GoalsPage() {
                   type="number"
                   step="0.01"
                   value={yearlyGoal || ""}
-                  onChange={(e) => setYearlyGoal(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => {
+                    const total = parseFloat(e.target.value) || 0;
+                    setYearlyGoal(total);
+                    setMonthlyRevenueGoals(repeat(total / 12));
+                  }}
                 />
               </div>
               <div className="space-y-2">
@@ -395,7 +481,7 @@ export default function GoalsPage() {
               });
               const salesRevenue = salesThisMonth.reduce((sum, s) => {
                 const p = data.products.find((x) => x.id === s.productId);
-                return sum + (p ? p.salePrice * s.quantity : 0);
+                return sum + (p ? saleProfitAndMargin(s, p).revenue : 0);
               }, 0);
 
               return (

@@ -1,6 +1,7 @@
 import { AppData } from "./types";
 
 export const SEED_DATA: AppData = {
+  goalPlans: [],
   profile: {
     name: "Vagner",
     profileType: "person",

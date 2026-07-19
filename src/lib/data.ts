@@ -31,6 +31,7 @@ export function createEmptyData(): AppData {
     sales: [],
     stockMovements: [],
     payroll: [],
+    goalPlans: [],
   };
 }
 
@@ -46,6 +47,7 @@ export function normalizeData(value: Partial<AppData> | null | undefined): AppDa
     sales: Array.isArray(data.sales) ? data.sales : [],
     stockMovements: Array.isArray(data.stockMovements) ? data.stockMovements : [],
     payroll: Array.isArray(data.payroll) ? data.payroll : [],
+    goalPlans: Array.isArray(data.goalPlans) ? data.goalPlans : [],
   };
 }
 
