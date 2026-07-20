@@ -118,6 +118,30 @@ export type DashboardSectionKey =
   | "store-operation"
   | "analysis";
 
+export type DashboardBlockKey =
+  | "mrr-active"
+  | "active-contracts"
+  | "period-mrr"
+  | "next-year-mrr"
+  | "goal-progress"
+  | "pipeline"
+  | "churn-risk"
+  | "client-concentration"
+  | "commission"
+  | "mrr-evolution"
+  | "revenue-composition"
+  | "client-ranking"
+  | "alerts"
+  | DashboardWidgetKey;
+
+export type DashboardBlockSize = "small" | "medium" | "large" | "full";
+export type DashboardView = "overview" | "commercial" | "store";
+
+export interface DashboardBlockPreference {
+  key: DashboardBlockKey;
+  size: DashboardBlockSize;
+}
+
 // --- Calculo Mensal ---
 export interface PayrollMonth {
   id: string;
@@ -169,6 +193,9 @@ export interface OrgProfile {
   salesRevenueMonthly?: number;
   dashboardWidgets?: DashboardWidgetKey[];
   dashboardSections?: DashboardSectionKey[];
+  dashboardLayout?: DashboardBlockPreference[];
+  dashboardLayouts?: Partial<Record<DashboardView, DashboardBlockPreference[]>>;
+  lastDashboardView?: DashboardView;
 }
 
 export type SyncStatus = "loading" | "synced" | "saving" | "offline" | "error";

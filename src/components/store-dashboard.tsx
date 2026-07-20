@@ -1,43 +1,30 @@
 "use client";
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Boxes, EyeOff, PackageSearch, WalletCards } from "lucide-react";
+import { Boxes, PackageSearch, WalletCards } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAppStore } from "@/components/store-provider";
 import { DashboardWidgetKey } from "@/lib/types";
 import { productNeedsRestock, productStock, saleProfitAndMargin } from "@/lib/calculations";
 import { currency, dateFormat } from "@/lib/format";
-import { DEFAULT_STORE_WIDGETS } from "@/components/dashboard-organizer";
+import { DashboardBlock } from "@/components/dashboard-layout";
 
 const chartColors = { cyan: "oklch(0.75 0.15 195)", emerald: "oklch(0.7 0.17 155)", muted: "oklch(0.28 0.01 260)", text: "oklch(0.65 0.01 260)", bg: "oklch(0.18 0.005 260)", border: "oklch(0.28 0.01 260)" };
 
 export function StoreDashboard() {
   const { data } = useAppStore();
-  const enabled = data.profile.dashboardWidgets ?? DEFAULT_STORE_WIDGETS;
 
   if (!data.profile.enabledModules.some((module) => module === "products" || module === "sales")) return null;
 
   return (
-    <section className="space-y-4" data-tour="store-dashboard">
-      <div>
-        <h3 className="text-lg font-semibold">Operação da loja</h3>
-        <p className="text-sm text-muted-foreground">Estoque, vendas e movimentações em um só lugar.</p>
-      </div>
-      {enabled.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center py-8 text-center">
-            <EyeOff className="mb-3 h-8 w-8 text-muted-foreground" />
-            <p className="font-medium">Nenhum bloco selecionado</p>
-            <p className="text-sm text-muted-foreground">Use Minha Órbita para escolher os blocos.</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {enabled.map((key) => <StoreWidget key={key} widgetKey={key} />)}
-        </div>
-      )}
-    </section>
+    <div className="contents" data-tour="store-dashboard">
+      {(["inventory-summary", "sales-summary", "stock-levels", "sales-by-product", "recent-movements"] as DashboardWidgetKey[]).map((key) => (
+        <DashboardBlock key={key} id={key}>
+          <StoreWidget widgetKey={key} />
+        </DashboardBlock>
+      ))}
+    </div>
   );
 }
 

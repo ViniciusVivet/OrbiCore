@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,13 +8,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   TrendingUp, FileText, AlertTriangle, ArrowUpRight, ArrowDownRight,
   Shield, Target, Users, BarChart3, LineChart, AreaChart as AreaChartIcon,
-  PieChart as PieChartIcon, ChevronRight, Calendar,
+  PieChart as PieChartIcon, ChevronRight, Calendar, Gauge, Handshake, Store as StoreIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useAppStore } from "@/components/store-provider";
 import { StoreDashboard } from "@/components/store-dashboard";
-import { DashboardOrganizer, DEFAULT_DASHBOARD_SECTIONS } from "@/components/dashboard-organizer";
-import { DashboardSectionKey } from "@/lib/types";
+import {
+  DashboardBlock,
+  DashboardGrid,
+  DashboardLayoutControls,
+  DashboardLayoutProvider,
+} from "@/components/dashboard-layout";
+import { DashboardView } from "@/lib/types";
 import { currency, percent, monthName, shortMonthName } from "@/lib/format";
 import {
   mrrActiveMonthly, activeContractsCount, mrrEnteringYear, mrrNextYear,
@@ -57,7 +62,7 @@ const tooltipStyle = {
 };
 
 export default function DashboardPage() {
-  const { data, loaded } = useAppStore();
+  const { data, loaded, updateProfile } = useAppStore();
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentQuarter = Math.ceil(currentMonth / 3);
@@ -68,12 +73,28 @@ export default function DashboardPage() {
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedQuarter, setSelectedQuarter] = useState(currentQuarter);
   const [chartType, setChartType] = useState<ChartType>("area");
+  const [dashboardView, setDashboardView] = useState<DashboardView>(data.profile.lastDashboardView ?? "overview");
+  const financialEnabled = data.profile.enabledModules.some((module) => ["contracts", "meetings", "goals", "payroll"].includes(module));
+  const storeEnabled = data.profile.enabledModules.some((module) => ["products", "sales"].includes(module));
+  const availableViews = useMemo<DashboardView[]>(() => financialEnabled && storeEnabled
+    ? ["overview", "commercial", "store"]
+    : financialEnabled
+      ? ["commercial"]
+      : storeEnabled
+        ? ["store"]
+        : ["overview"], [financialEnabled, storeEnabled]);
+
+  useEffect(() => {
+    const preferred = data.profile.lastDashboardView;
+    const next = preferred && availableViews.includes(preferred) ? preferred : availableViews[0];
+    if (dashboardView !== next) setDashboardView(next);
+  }, [loaded, data.profile.lastDashboardView, availableViews, dashboardView]);
 
   if (!loaded) return null;
 
   const { contracts, meetings, payroll, profile } = data;
   const churnEnabled = profile.enabledFeatures?.includes("churn-risk-90d") ?? false;
-  const showFinancialDashboard = profile.enabledModules.some((module) => ["contracts", "meetings", "goals", "payroll"].includes(module));
+  const showFinancialDashboard = financialEnabled;
 
   // --- MRR Metrics ---
   const mrrActive = mrrActiveMonthly(contracts);
@@ -133,23 +154,31 @@ export default function DashboardPage() {
   const top3Pct = concentration.length >= 3 ? concentration[2].cumulativePercent : (topClient?.cumulativePercent ?? 0);
 
   const yearOptions = [year - 1, year, year + 1];
-  const dashboardSections = profile.dashboardSections ?? DEFAULT_DASHBOARD_SECTIONS;
-  const sectionVisible = (key: DashboardSectionKey) => dashboardSections.includes(key);
-  const sectionOrder = (key: DashboardSectionKey) => dashboardSections.indexOf(key);
+  const viewLabels: Record<DashboardView, { label: string; description: string; icon: React.ReactNode }> = {
+    overview: { label: "Visão geral", description: "O essencial do negócio em um só olhar", icon: <Gauge className="h-4 w-4" /> },
+    commercial: { label: "Comercial", description: "Contratos, MRR, pipeline e clientes", icon: <Handshake className="h-4 w-4" /> },
+    store: { label: "Loja e estoque", description: "Produtos, vendas, lucro e reposição", icon: <StoreIcon className="h-4 w-4" /> },
+  };
+
+  function changeDashboardView(view: DashboardView) {
+    setDashboardView(view);
+    updateProfile({ lastDashboardView: view });
+  }
 
   return (
+    <DashboardLayoutProvider view={dashboardView}>
     <div className="flex flex-col gap-6">
       {/* Header + Filters */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between" data-tour="welcome" style={{ order: -1 }}>
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
+          <h2 className="text-2xl font-bold tracking-tight">{viewLabels[dashboardView].label}</h2>
           <p className="text-muted-foreground">
-            Visão geral — {periodLabel} {periodView !== "year" ? year : ""}
+            {viewLabels[dashboardView].description} · {periodLabel} {periodView !== "year" ? year : ""}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2" data-tour="filters">
-          <DashboardOrganizer />
+          <DashboardLayoutControls />
           {/* Year */}
           <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
             <SelectTrigger className="w-[100px] h-9">
@@ -208,15 +237,31 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {sectionVisible("store-operation") && (
-        <div style={{ order: sectionOrder("store-operation") }}>
-          <StoreDashboard />
-        </div>
-      )}
+      <nav className="flex gap-2 overflow-x-auto rounded-xl border border-border/60 bg-card/40 p-1.5" aria-label="Áreas do dashboard">
+        {availableViews.map((view) => (
+          <button
+            key={view}
+            type="button"
+            onClick={() => changeDashboardView(view)}
+            className={`flex min-h-11 min-w-32 flex-1 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors ${
+              dashboardView === view
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            {viewLabels[view].icon}
+            <span>{viewLabels[view].label}</span>
+          </button>
+        ))}
+      </nav>
+
+      <DashboardGrid>
+      <StoreDashboard />
 
       {showFinancialDashboard && <>
       {/* KPI Cards */}
-      {sectionVisible("business-summary") && <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4" data-tour="kpi-cards" style={{ order: sectionOrder("business-summary") }}>
+      <div className="contents" data-tour="kpi-cards">
+        <DashboardBlock id="mrr-active">
         <ClickableStatCard
           href="/contracts"
           title="MRR Ativo"
@@ -225,6 +270,8 @@ export default function DashboardPage() {
           icon={<TrendingUp className="h-4 w-4 text-orbi-cyan" />}
           bg="bg-orbi-cyan/10"
         />
+        </DashboardBlock>
+        <DashboardBlock id="active-contracts">
         <ClickableStatCard
           href="/contracts"
           title="Contratos Ativos"
@@ -233,6 +280,8 @@ export default function DashboardPage() {
           icon={<FileText className="h-4 w-4 text-orbi-blue" />}
           bg="bg-orbi-blue/10"
         />
+        </DashboardBlock>
+        <DashboardBlock id="period-mrr">
         <ClickableStatCard
           href="/goals"
           title={`MRR ${periodView === "month" ? shortMonthName(selectedMonth) : periodView === "quarter" ? `T${selectedQuarter}` : "Ano"}`}
@@ -245,6 +294,8 @@ export default function DashboardPage() {
           badge={periodPct >= 1 ? "Meta batida" : undefined}
           badgeColor={periodPct >= 1 ? "bg-orbi-emerald/20 text-orbi-emerald" : undefined}
         />
+        </DashboardBlock>
+        <DashboardBlock id="next-year-mrr">
         <ClickableStatCard
           href="/contracts"
           title="MRR Próximo Ano"
@@ -253,10 +304,11 @@ export default function DashboardPage() {
           icon={<ArrowDownRight className="h-4 w-4 text-orbi-amber" />}
           bg="bg-orbi-amber/10"
         />
-      </div>}
+        </DashboardBlock>
+      </div>
 
       {/* Goal progress bar */}
-      {sectionVisible("goals") && <Card className="border-border/50" data-tour="goal-bar" style={{ order: sectionOrder("goals") }}>
+      <DashboardBlock id="goal-progress"><Card className="h-full border-border/50" data-tour="goal-bar">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between mb-3">
             <div>
@@ -334,10 +386,11 @@ export default function DashboardPage() {
             </div>
           )}
         </CardContent>
-      </Card>}
+      </Card></DashboardBlock>
 
       {/* Insight cards */}
-      {sectionVisible("analysis") && <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4" style={{ order: sectionOrder("analysis") }}>
+      <div className="contents">
+        <DashboardBlock id="pipeline">
         <ClickableStatCard
           href="/meetings"
           title="Pipeline Ponderado"
@@ -346,7 +399,8 @@ export default function DashboardPage() {
           icon={<Target className="h-4 w-4 text-purple-400" />}
           bg="bg-purple-400/10"
         />
-        {churnEnabled && <ClickableStatCard
+        </DashboardBlock>
+        {churnEnabled && <DashboardBlock id="churn-risk"><ClickableStatCard
           href="/contracts"
           title="Risco de Churn (90d)"
           value={churn.count > 0 ? currency(churn.mrrAtRisk) : "Seguro"}
@@ -356,7 +410,8 @@ export default function DashboardPage() {
           icon={<Shield className="h-4 w-4 text-orbi-rose" />}
           bg="bg-orbi-rose/10"
           highlight={churn.count > 0}
-        />}
+        /></DashboardBlock>}
+        <DashboardBlock id="client-concentration">
         <ClickableStatCard
           href="/contracts"
           title="Concentração"
@@ -368,6 +423,8 @@ export default function DashboardPage() {
           bg="bg-orbi-amber/10"
           highlight={topClient ? topClient.percent > 0.4 : false}
         />
+        </DashboardBlock>
+        <DashboardBlock id="commission">
         <ClickableStatCard
           href="/payroll"
           title="Comissão vs MRR"
@@ -378,12 +435,13 @@ export default function DashboardPage() {
           icon={<TrendingUp className="h-4 w-4 text-orbi-emerald" />}
           bg="bg-orbi-emerald/10"
         />
-      </div>}
+        </DashboardBlock>
+      </div>
 
       {/* Charts */}
-      {sectionVisible("evolution") && <div className="grid gap-6 lg:grid-cols-3" style={{ order: sectionOrder("evolution") }}>
+      <div className="contents">
         {/* MRR chart - 2 cols */}
-        <Card className="border-border/50 lg:col-span-2">
+        <DashboardBlock id="mrr-evolution"><Card className="h-full border-border/50">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -449,10 +507,10 @@ export default function DashboardPage() {
               </ResponsiveContainer>
             </div>
           </CardContent>
-        </Card>
+        </Card></DashboardBlock>
 
         {/* Revenue type pie chart */}
-        <Card className="border-border/50">
+        <DashboardBlock id="revenue-composition"><Card className="h-full border-border/50">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -498,12 +556,12 @@ export default function DashboardPage() {
               <p className="text-sm text-muted-foreground text-center py-8">Sem contratos ativos</p>
             )}
           </CardContent>
-        </Card>
-      </div>}
+        </Card></DashboardBlock>
+      </div>
 
       {/* Client concentration chart */}
-      {sectionVisible("analysis") && concentration.length > 0 && (
-        <Card className="border-border/50" style={{ order: sectionOrder("analysis") }}>
+      {concentration.length > 0 && (
+        <DashboardBlock id="client-ranking"><Card className="h-full border-border/50">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -534,12 +592,12 @@ export default function DashboardPage() {
               </ResponsiveContainer>
             </div>
           </CardContent>
-        </Card>
+        </Card></DashboardBlock>
       )}
 
       {/* Alerts */}
-      {sectionVisible("attention") && (overdueAlerts.length > 0 || upcomingAlerts.length > 0 || (churnEnabled && churn.count > 0)) && (
-        <Card className="border-border/50" style={{ order: sectionOrder("attention") }}>
+      {(overdueAlerts.length > 0 || upcomingAlerts.length > 0 || (churnEnabled && churn.count > 0)) && (
+        <DashboardBlock id="alerts"><Card className="h-full border-border/50">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
@@ -573,10 +631,12 @@ export default function DashboardPage() {
               ))}
             </div>
           </CardContent>
-        </Card>
+        </Card></DashboardBlock>
       )}
       </>}
+      </DashboardGrid>
     </div>
+    </DashboardLayoutProvider>
   );
 }
 
