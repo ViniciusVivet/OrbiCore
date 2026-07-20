@@ -9,10 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { Plus, FileText, Pencil, Trash2, Shield } from "lucide-react";
+import { Plus, FileText, Pencil, Trash2, Shield, TrendingUp } from "lucide-react";
 import { useAppStore } from "@/components/store-provider";
 import { currency, dateFormat, percent } from "@/lib/format";
-import { monthsInYear, monthsNextYear, clientConcentration, mrrByRevenueType, churnRisk } from "@/lib/calculations";
+import { monthsInYear, clientConcentration, mrrByRevenueType, churnRisk, contractFeeAt, contractRevenueInYear } from "@/lib/calculations";
 import { Contract, ContractStatus, RevenueType } from "@/lib/types";
 import { useSortable } from "@/hooks/use-sortable";
 import { SortableHeader } from "@/components/sortable-header";
@@ -50,9 +50,10 @@ const emptyForm: FormData = {
   revenueType: "Novo",
   onboardingValue: 0,
   upsellCrossSellValue: 0,
+  feeHistory: [],
 };
 
-type ContractRow = Contract & { mrrYear: number; mrrNextYear: number; mInYear: number };
+type ContractRow = Contract & { currentFee: number; mrrYear: number; mrrNextYear: number; mInYear: number };
 
 export default function ContractsPage() {
   const { data, loaded, addContract, updateContract, deleteContract } = useAppStore();
@@ -68,8 +69,14 @@ export default function ContractsPage() {
 
   const enriched: ContractRow[] = filtered.map((c) => {
     const mInYear = monthsInYear(c.saleDate, c.durationMonths, year);
-    const mNext = monthsNextYear(c.saleDate, c.durationMonths, year);
-    return { ...c, mInYear, mrrYear: c.monthlyFee * mInYear, mrrNextYear: c.monthlyFee * mNext };
+    const now = new Date();
+    return {
+      ...c,
+      currentFee: contractFeeAt(c, now.getFullYear(), now.getMonth() + 1),
+      mInYear,
+      mrrYear: contractRevenueInYear(c, year),
+      mrrNextYear: contractRevenueInYear(c, year + 1),
+    };
   });
 
   const { sorted: contracts, sortKey, sortDir, toggleSort } = useSortable<ContractRow>(enriched);
@@ -93,23 +100,30 @@ export default function ContractsPage() {
       revenueType: c.revenueType,
       onboardingValue: c.onboardingValue,
       upsellCrossSellValue: c.upsellCrossSellValue,
+      feeHistory: [...(c.feeHistory ?? [])],
     });
     setDialogOpen(true);
   }
 
   function handleSave() {
     if (!form.client || !form.monthlyFee) return;
+    const normalizedForm = {
+      ...form,
+      feeHistory: [...(form.feeHistory ?? [])]
+        .filter((change) => change.effectiveFrom && change.monthlyFee > 0)
+        .sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom)),
+    };
     if (editingId) {
-      updateContract(editingId, form);
+      updateContract(editingId, normalizedForm);
     } else {
-      addContract(form);
+      addContract(normalizedForm);
     }
     setDialogOpen(false);
   }
 
   const totalMRR = data.contracts
     .filter((c) => c.status === "Ativo")
-    .reduce((s, c) => s + c.monthlyFee, 0);
+    .reduce((s, c) => s + contractFeeAt(c, new Date().getFullYear(), new Date().getMonth() + 1), 0);
 
   // Insights
   const concentration = clientConcentration(data.contracts);
@@ -272,7 +286,7 @@ export default function ContractsPage() {
                   <tr className="border-b">
                     <SortableHeader label="Data" sortKey={"saleDate" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} />
                     <SortableHeader label="Cliente" sortKey={"client" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} />
-                    <SortableHeader label="Fee Mensal" sortKey={"monthlyFee" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-right" />
+                    <SortableHeader label="Fee Vigente" sortKey={"currentFee" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-right" />
                     <SortableHeader label="Duração" sortKey={"durationMonths" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-center" />
                     <SortableHeader label="Meses Ano" sortKey={"mInYear" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-center" />
                     <SortableHeader label="MRR Ano" sortKey={"mrrYear" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-right" />
@@ -287,7 +301,14 @@ export default function ContractsPage() {
                     <TableRow key={c.id}>
                       <TableCell className="whitespace-nowrap">{dateFormat(c.saleDate)}</TableCell>
                       <TableCell className="font-medium">{c.client}</TableCell>
-                      <TableCell className="text-right">{currency(c.monthlyFee)}</TableCell>
+                      <TableCell className="text-right">
+                        {currency(c.currentFee)}
+                        {(c.feeHistory?.length ?? 0) > 0 && (
+                          <span className="ml-1 text-xs text-orbi-emerald" title={`${c.feeHistory?.length} reajuste(s)`}>
+                            <TrendingUp className="inline h-3 w-3" />
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-center">{c.durationMonths}m</TableCell>
                       <TableCell className="text-center">{c.mInYear}</TableCell>
                       <TableCell className="text-right">{currency(c.mrrYear)}</TableCell>
@@ -319,7 +340,7 @@ export default function ContractsPage() {
 
       {/* Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Contrato" : "Novo Contrato"}</DialogTitle>
           </DialogHeader>
@@ -378,6 +399,87 @@ export default function ContractsPage() {
                 <Label>Valor Upsell/Cross-sell (R$)</Label>
                 <Input type="number" step="0.01" value={form.upsellCrossSellValue || ""} onChange={(e) => setForm({ ...form, upsellCrossSellValue: parseFloat(e.target.value) || 0 })} />
               </div>
+            </div>
+            <div className="space-y-3 rounded-lg border border-border/60 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <Label>Histórico de reajustes</Label>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    O novo fee passa a valer a partir do mês informado.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-1"
+                  onClick={() =>
+                    setForm({
+                      ...form,
+                      feeHistory: [
+                        ...(form.feeHistory ?? []),
+                        { effectiveFrom: "", monthlyFee: 0 },
+                      ],
+                    })
+                  }
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Reajuste
+                </Button>
+              </div>
+              {(form.feeHistory ?? []).length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhum reajuste cadastrado.</p>
+              ) : (
+                <div className="space-y-2">
+                  {(form.feeHistory ?? []).map((change, index) => (
+                    <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-2" key={index}>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Vigência</Label>
+                        <Input
+                          type="month"
+                          value={change.effectiveFrom}
+                          onChange={(event) => {
+                            const feeHistory = [...(form.feeHistory ?? [])];
+                            feeHistory[index] = { ...change, effectiveFrom: event.target.value };
+                            setForm({ ...form, feeHistory });
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Novo fee (R$)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={change.monthlyFee || ""}
+                          onChange={(event) => {
+                            const feeHistory = [...(form.feeHistory ?? [])];
+                            feeHistory[index] = {
+                              ...change,
+                              monthlyFee: parseFloat(event.target.value) || 0,
+                            };
+                            setForm({ ...form, feeHistory });
+                          }}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Remover reajuste"
+                        onClick={() =>
+                          setForm({
+                            ...form,
+                            feeHistory: (form.feeHistory ?? []).filter((_, itemIndex) => itemIndex !== index),
+                          })
+                        }
+                      >
+                        <Trash2 className="h-4 w-4 text-orbi-rose" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>

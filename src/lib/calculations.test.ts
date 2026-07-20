@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcDSR, calcINSS, clientConcentration, monthsInYear, parseLocalDate, productStock, productStockStatus, suggestedRestockQuantity } from "./calculations";
+import { calcDSR, calcINSS, clientConcentration, contractFeeAt, contractRevenueInYear, monthsInYear, parseLocalDate, productStock, productStockStatus, suggestedRestockQuantity } from "./calculations";
 import type { Contract } from "./types";
 
 const contract = (client: string, monthlyFee: number, id: string): Contract => ({
@@ -17,6 +17,20 @@ describe("cálculos de domínio", () => {
   it("calcula meses de contrato entre anos", () => {
     expect(monthsInYear("2026-10-01", 6, 2026)).toBe(3);
     expect(monthsInYear("2026-10-01", 6, 2027)).toBe(3);
+  });
+
+  it("aplica reajustes de fee somente a partir da vigência", () => {
+    const adjusted = {
+      ...contract("Cliente", 1000, "fee"),
+      feeHistory: [
+        { effectiveFrom: "2026-07", monthlyFee: 1200 },
+        { effectiveFrom: "2026-10", monthlyFee: 1500 },
+      ],
+    };
+    expect(contractFeeAt(adjusted, 2026, 6)).toBe(1000);
+    expect(contractFeeAt(adjusted, 2026, 7)).toBe(1200);
+    expect(contractFeeAt(adjusted, 2026, 12)).toBe(1500);
+    expect(contractRevenueInYear(adjusted, 2026)).toBe(14_100);
   });
 
   it("agrupa contratos do mesmo cliente na concentração", () => {

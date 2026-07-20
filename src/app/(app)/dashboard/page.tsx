@@ -13,6 +13,8 @@ import {
 import Link from "next/link";
 import { useAppStore } from "@/components/store-provider";
 import { StoreDashboard } from "@/components/store-dashboard";
+import { DashboardOrganizer, DEFAULT_DASHBOARD_SECTIONS } from "@/components/dashboard-organizer";
+import { DashboardSectionKey } from "@/lib/types";
 import { currency, percent, monthName, shortMonthName } from "@/lib/format";
 import {
   mrrActiveMonthly, activeContractsCount, mrrEnteringYear, mrrNextYear,
@@ -131,11 +133,14 @@ export default function DashboardPage() {
   const top3Pct = concentration.length >= 3 ? concentration[2].cumulativePercent : (topClient?.cumulativePercent ?? 0);
 
   const yearOptions = [year - 1, year, year + 1];
+  const dashboardSections = profile.dashboardSections ?? DEFAULT_DASHBOARD_SECTIONS;
+  const sectionVisible = (key: DashboardSectionKey) => dashboardSections.includes(key);
+  const sectionOrder = (key: DashboardSectionKey) => dashboardSections.indexOf(key);
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {/* Header + Filters */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between" data-tour="welcome">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between" data-tour="welcome" style={{ order: -1 }}>
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
           <p className="text-muted-foreground">
@@ -144,6 +149,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2" data-tour="filters">
+          <DashboardOrganizer />
           {/* Year */}
           <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
             <SelectTrigger className="w-[100px] h-9">
@@ -202,11 +208,15 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <StoreDashboard />
+      {sectionVisible("store-operation") && (
+        <div style={{ order: sectionOrder("store-operation") }}>
+          <StoreDashboard />
+        </div>
+      )}
 
       {showFinancialDashboard && <>
       {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4" data-tour="kpi-cards">
+      {sectionVisible("business-summary") && <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4" data-tour="kpi-cards" style={{ order: sectionOrder("business-summary") }}>
         <ClickableStatCard
           href="/contracts"
           title="MRR Ativo"
@@ -243,10 +253,10 @@ export default function DashboardPage() {
           icon={<ArrowDownRight className="h-4 w-4 text-orbi-amber" />}
           bg="bg-orbi-amber/10"
         />
-      </div>
+      </div>}
 
       {/* Goal progress bar */}
-      <Card className="border-border/50" data-tour="goal-bar">
+      {sectionVisible("goals") && <Card className="border-border/50" data-tour="goal-bar" style={{ order: sectionOrder("goals") }}>
         <CardContent className="pt-6">
           <div className="flex items-center justify-between mb-3">
             <div>
@@ -324,10 +334,10 @@ export default function DashboardPage() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
       {/* Insight cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {sectionVisible("analysis") && <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4" style={{ order: sectionOrder("analysis") }}>
         <ClickableStatCard
           href="/meetings"
           title="Pipeline Ponderado"
@@ -368,10 +378,10 @@ export default function DashboardPage() {
           icon={<TrendingUp className="h-4 w-4 text-orbi-emerald" />}
           bg="bg-orbi-emerald/10"
         />
-      </div>
+      </div>}
 
       {/* Charts */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      {sectionVisible("evolution") && <div className="grid gap-6 lg:grid-cols-3" style={{ order: sectionOrder("evolution") }}>
         {/* MRR chart - 2 cols */}
         <Card className="border-border/50 lg:col-span-2">
           <CardHeader>
@@ -489,11 +499,11 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
-      </div>
+      </div>}
 
       {/* Client concentration chart */}
-      {concentration.length > 0 && (
-        <Card className="border-border/50">
+      {sectionVisible("analysis") && concentration.length > 0 && (
+        <Card className="border-border/50" style={{ order: sectionOrder("analysis") }}>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -528,8 +538,8 @@ export default function DashboardPage() {
       )}
 
       {/* Alerts */}
-      {(overdueAlerts.length > 0 || upcomingAlerts.length > 0 || (churnEnabled && churn.count > 0)) && (
-        <Card className="border-border/50">
+      {sectionVisible("attention") && (overdueAlerts.length > 0 || upcomingAlerts.length > 0 || (churnEnabled && churn.count > 0)) && (
+        <Card className="border-border/50" style={{ order: sectionOrder("attention") }}>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">

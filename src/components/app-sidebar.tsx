@@ -29,6 +29,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { useAppStore } from "@/components/store-provider";
 import { useTheme, ThemeKey } from "@/components/theme-provider";
@@ -76,6 +77,7 @@ const THEME_LABELS: Record<ThemeKey, string> = {
 
 function NavSection({ label, items }: { label: string; items: { title: string; href: string; icon: typeof LayoutDashboard; module?: ModuleKey }[] }) {
   const pathname = usePathname();
+  const { isMobile, setOpenMobile } = useSidebar();
   if (items.length === 0) return null;
 
   return (
@@ -88,6 +90,9 @@ function NavSection({ label, items }: { label: string; items: { title: string; h
               <SidebarMenuButton
                 isActive={pathname === item.href}
                 render={<Link href={item.href} />}
+                onClick={() => {
+                  if (isMobile) setOpenMobile(false);
+                }}
               >
                 <item.icon className="h-4 w-4" />
                 <span>{item.title}</span>
@@ -122,7 +127,7 @@ export function AppSidebar() {
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <h1 className="text-base font-bold tracking-tight text-foreground">
+            <h1 className="truncate text-base font-bold tracking-tight text-foreground">
               {data.profile.name || "OrbiCore"}
             </h1>
             <p className="text-[11px] text-muted-foreground">

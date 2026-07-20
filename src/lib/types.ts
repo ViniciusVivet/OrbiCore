@@ -17,7 +17,13 @@ export interface Contract {
   onboardingValue: number;
   upsellCrossSellValue: number;
   parentContractId?: string;
+  feeHistory?: ContractFeeChange[];
   createdAt: string;
+}
+
+export interface ContractFeeChange {
+  effectiveFrom: string; // YYYY-MM
+  monthlyFee: number;
 }
 
 // --- Reunioes ---
@@ -104,6 +110,14 @@ export type DashboardWidgetKey =
   | "sales-by-product"
   | "recent-movements";
 
+export type DashboardSectionKey =
+  | "business-summary"
+  | "attention"
+  | "goals"
+  | "evolution"
+  | "store-operation"
+  | "analysis";
+
 // --- Calculo Mensal ---
 export interface PayrollMonth {
   id: string;
@@ -154,6 +168,7 @@ export interface OrgProfile {
   newContractsMonthly?: number;
   salesRevenueMonthly?: number;
   dashboardWidgets?: DashboardWidgetKey[];
+  dashboardSections?: DashboardSectionKey[];
 }
 
 export type SyncStatus = "loading" | "synced" | "saving" | "offline" | "error";

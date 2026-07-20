@@ -22,6 +22,24 @@ export const DEFAULT_PROFILE: OrgProfile = {
   salesRevenueMonthly: 0,
 };
 
+const LEGACY_DEFAULT_MODULES = [
+  "dashboard",
+  "contracts",
+  "meetings",
+  "goals",
+  "payroll",
+  "export",
+] as const;
+
+function normalizeEnabledModules(profile: Partial<OrgProfile> | undefined): OrgProfile["enabledModules"] {
+  const modules = profile?.enabledModules;
+  if (!Array.isArray(modules)) return [...DEFAULT_PROFILE.enabledModules];
+  const isLegacyDefault =
+    modules.length === LEGACY_DEFAULT_MODULES.length &&
+    LEGACY_DEFAULT_MODULES.every((module) => modules.includes(module));
+  return isLegacyDefault ? [...DEFAULT_PROFILE.enabledModules] : modules;
+}
+
 export function createEmptyData(): AppData {
   return {
     profile: { ...DEFAULT_PROFILE },
@@ -40,7 +58,11 @@ export function normalizeData(value: Partial<AppData> | null | undefined): AppDa
   const data = value ?? {};
 
   return {
-    profile: { ...empty.profile, ...(data.profile ?? {}) },
+    profile: {
+      ...empty.profile,
+      ...(data.profile ?? {}),
+      enabledModules: normalizeEnabledModules(data.profile),
+    },
     contracts: Array.isArray(data.contracts) ? data.contracts : [],
     meetings: Array.isArray(data.meetings) ? data.meetings : [],
     products: Array.isArray(data.products) ? data.products : [],

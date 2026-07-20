@@ -30,6 +30,32 @@ export function monthsNextYear(saleDate: string, durationMonths: number, year: n
   return monthsInYear(saleDate, durationMonths, year + 1);
 }
 
+/** Retorna o fee vigente em um mês, considerando reajustes passados e futuros. */
+export function contractFeeAt(contract: Contract, year: number, month: number): number {
+  const target = year * 12 + month;
+  const changes = [...(contract.feeHistory ?? [])]
+    .filter((change) => {
+      const [changeYear, changeMonth] = change.effectiveFrom.slice(0, 7).split("-").map(Number);
+      return changeYear * 12 + changeMonth <= target;
+    })
+    .sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom));
+  return changes.at(-1)?.monthlyFee ?? contract.monthlyFee;
+}
+
+export function contractRevenueInYear(contract: Contract, year: number): number {
+  const start = parseLocalDate(contract.saleDate);
+  const startIndex = start.getFullYear() * 12 + start.getMonth() + 1;
+  const endIndex = startIndex + contract.durationMonths - 1;
+  let total = 0;
+  for (let month = 1; month <= 12; month++) {
+    const index = year * 12 + month;
+    if (index >= startIndex && index <= endIndex) {
+      total += contractFeeAt(contract, year, month);
+    }
+  }
+  return total;
+}
+
 /** MRR vendido no mes (soma fee mensal dos contratos vendidos naquele mes) */
 export function mrrInMonth(contracts: Contract[], year: number, month: number, statusFilter?: string): number {
   return contracts
@@ -39,7 +65,7 @@ export function mrrInMonth(contracts: Contract[], year: number, month: number, s
       const matchStatus = !statusFilter || statusFilter === "Todos" || c.status === statusFilter;
       return matchDate && matchStatus;
     })
-    .reduce((sum, c) => sum + c.monthlyFee, 0);
+    .reduce((sum, c) => sum + contractFeeAt(c, year, month), 0);
 }
 
 /** MRR vendido no trimestre */
@@ -59,7 +85,7 @@ export function mrrEnteringYear(contracts: Contract[], year: number, statusFilte
       const matchStatus = !statusFilter || statusFilter === "Todos" || c.status === statusFilter;
       return matchStatus;
     })
-    .reduce((sum, c) => sum + c.monthlyFee * monthsInYear(c.saleDate, c.durationMonths, year), 0);
+    .reduce((sum, c) => sum + contractRevenueInYear(c, year), 0);
 }
 
 /** MRR que entra no proximo ano */
@@ -69,7 +95,10 @@ export function mrrNextYear(contracts: Contract[], year: number, statusFilter?: 
 
 /** MRR ativo mensal (soma dos fees dos contratos ativos) */
 export function mrrActiveMonthly(contracts: Contract[]): number {
-  return contracts.filter((c) => c.status === "Ativo").reduce((sum, c) => sum + c.monthlyFee, 0);
+  const now = new Date();
+  return contracts
+    .filter((c) => c.status === "Ativo")
+    .reduce((sum, c) => sum + contractFeeAt(c, now.getFullYear(), now.getMonth() + 1), 0);
 }
 
 /** Contratos ativos */
@@ -107,8 +136,11 @@ export function mrrChartData(contracts: Contract[], year: number, statusFilter?:
         const mInYear = monthsInYear(c.saleDate, c.durationMonths, year);
         const d = parseLocalDate(c.saleDate);
         const contractStartMonth = d.getFullYear() === year ? d.getMonth() + 1 : 1;
-        const monthsCounted = Math.max(0, Math.min(month, contractStartMonth + mInYear - 1) - Math.max(contractStartMonth, 1) + 1);
-        return sum + c.monthlyFee * monthsCounted;
+        let revenue = 0;
+        for (let countedMonth = Math.max(contractStartMonth, 1); countedMonth <= Math.min(month, contractStartMonth + mInYear - 1); countedMonth++) {
+          revenue += contractFeeAt(c, year, countedMonth);
+        }
+        return sum + revenue;
       }, 0);
 
     return {
@@ -127,10 +159,13 @@ export function mrrChartData(contracts: Contract[], year: number, statusFilter?:
 /** Concentracao de clientes — top clientes por MRR com % acumulado */
 export function clientConcentration(contracts: Contract[]) {
   const active = contracts.filter((c) => c.status === "Ativo");
-  const totalMRR = active.reduce((s, c) => s + c.monthlyFee, 0);
+  const now = new Date();
+  const currentFee = (contract: Contract) =>
+    contractFeeAt(contract, now.getFullYear(), now.getMonth() + 1);
+  const totalMRR = active.reduce((s, c) => s + currentFee(c), 0);
   const grouped = active.reduce<Record<string, number>>((clients, contract) => {
     const client = contract.client.trim() || "Sem cliente";
-    clients[client] = (clients[client] ?? 0) + contract.monthlyFee;
+    clients[client] = (clients[client] ?? 0) + currentFee(contract);
     return clients;
   }, {});
   const sorted = Object.entries(grouped).sort((a, b) => b[1] - a[1]);
@@ -149,9 +184,12 @@ export function clientConcentration(contracts: Contract[]) {
 /** Breakdown de MRR por tipo de receita */
 export function mrrByRevenueType(contracts: Contract[]) {
   const active = contracts.filter((c) => c.status === "Ativo");
+  const now = new Date();
   const groups: Record<string, number> = {};
   active.forEach((c) => {
-    groups[c.revenueType] = (groups[c.revenueType] || 0) + c.monthlyFee;
+    groups[c.revenueType] =
+      (groups[c.revenueType] || 0) +
+      contractFeeAt(c, now.getFullYear(), now.getMonth() + 1);
   });
   return Object.entries(groups).map(([type, value]) => ({ type, value }));
 }
@@ -161,7 +199,9 @@ export function churnRisk(contracts: Contract[], year: number, withinMonths = 3)
   const current = new Date();
   const now = current.getFullYear() === year ? current : new Date(year, 0, 1);
   const active = contracts.filter((c) => c.status === "Ativo");
-  const totalMRR = active.reduce((s, c) => s + c.monthlyFee, 0);
+  const feeAtReference = (contract: Contract) =>
+    contractFeeAt(contract, now.getFullYear(), now.getMonth() + 1);
+  const totalMRR = active.reduce((s, c) => s + feeAtReference(c), 0);
   const atRisk = active.filter((c) => {
     const start = parseLocalDate(c.saleDate);
     const end = new Date(start);
@@ -169,7 +209,7 @@ export function churnRisk(contracts: Contract[], year: number, withinMonths = 3)
     const diffDays = (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
     return diffDays > 0 && diffDays <= withinMonths * 30;
   });
-  const mrrAtRisk = atRisk.reduce((s, c) => s + c.monthlyFee, 0);
+  const mrrAtRisk = atRisk.reduce((s, c) => s + feeAtReference(c), 0);
   return {
     contracts: atRisk,
     mrrAtRisk,
