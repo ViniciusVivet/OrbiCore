@@ -179,6 +179,16 @@ export type ModuleKey =
 
 export type AppFeatureKey = "churn-risk-90d";
 
+// Papel de parede do dashboard: uma imagem para todas as áreas ("all")
+// ou uma imagem por área (overview/commercial/store).
+export interface DashboardBackgrounds {
+  scope?: "all" | "area";
+  all?: string;
+  overview?: string;
+  commercial?: string;
+  store?: string;
+}
+
 export interface OrgProfile {
   name: string;
   profileType?: "person" | "company";
@@ -195,6 +205,7 @@ export interface OrgProfile {
   dashboardSections?: DashboardSectionKey[];
   dashboardLayout?: DashboardBlockPreference[];
   dashboardLayouts?: Partial<Record<DashboardView, DashboardBlockPreference[]>>;
+  dashboardBackgrounds?: DashboardBackgrounds;
   lastDashboardView?: DashboardView;
 }
 

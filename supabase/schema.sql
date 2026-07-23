@@ -173,3 +173,41 @@ create policy "Users delete own product images"
     bucket_id = 'product-images'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
+
+-- Papel de parede do dashboard: imagens otimizadas no cliente (webp), até 3 MB.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'background-images',
+  'background-images',
+  true,
+  3145728,
+  array['image/webp']
+)
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "Users upload own background images" on storage.objects;
+create policy "Users upload own background images"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'background-images'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "Users update own background images" on storage.objects;
+create policy "Users update own background images"
+  on storage.objects for update to authenticated
+  using (
+    bucket_id = 'background-images'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "Users delete own background images" on storage.objects;
+create policy "Users delete own background images"
+  on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'background-images'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );

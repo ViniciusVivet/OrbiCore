@@ -18,18 +18,15 @@ import { Meeting, MeetingStatus, MeetingChannel, MeetingType } from "@/lib/types
 import { useSortable } from "@/hooks/use-sortable";
 import { SortableHeader } from "@/components/sortable-header";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+import { chartTokens, chartTooltipStyle } from "@/lib/chart-theme";
 
 const COLORS = {
-  cyan: "oklch(0.75 0.15 195)",
-  blue: "oklch(0.65 0.15 250)",
-  emerald: "oklch(0.7 0.17 155)",
-  amber: "oklch(0.8 0.15 75)",
-  rose: "oklch(0.65 0.2 15)",
-  purple: "oklch(0.65 0.2 300)",
-  muted: "oklch(0.28 0.01 260)",
-  text: "oklch(0.65 0.01 260)",
-  bg: "oklch(0.18 0.005 260)",
-  border: "oklch(0.28 0.01 260)",
+  cyan: chartTokens.cyan,
+  blue: chartTokens.blue,
+  emerald: chartTokens.emerald,
+  purple: chartTokens.series3,
+  muted: chartTokens.grid,
+  text: chartTokens.axis,
 };
 
 const FUNNEL_COLORS = [COLORS.blue, COLORS.cyan, COLORS.purple, COLORS.emerald];
@@ -253,7 +250,7 @@ export default function MeetingsPage() {
                     <XAxis dataKey="channel" stroke={COLORS.text} fontSize={11} />
                     <YAxis stroke={COLORS.text} fontSize={11} tickFormatter={(v: number) => `${v}`} />
                     <Tooltip
-                      contentStyle={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: "8px" }}
+                      contentStyle={chartTooltipStyle}
                       formatter={(value, name) => [
                         name === "total" ? `${Number(value)} reuniões` : `${Number(value)} fechadas`,
                         name === "total" ? "Total" : "Fechadas"

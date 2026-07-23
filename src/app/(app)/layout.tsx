@@ -5,6 +5,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { Separator } from "@/components/ui/separator";
 import { StoreProvider } from "@/components/store-provider";
 import { Onboarding } from "@/components/onboarding";
+import { PwaManager } from "@/components/pwa-manager";
 import { SyncIndicator } from "@/components/sync-indicator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppStore } from "@/components/store-provider";
@@ -55,6 +56,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </main>
         </SidebarInset>
         <Onboarding />
+        <PwaManager />
       </SidebarProvider>
     </StoreProvider>
   );

@@ -44,7 +44,7 @@ export const DASHBOARD_BLOCKS: BlockDefinition[] = [
   { key: "period-mrr", label: "MRR do período", description: "Resultado comparado à meta", defaultSize: "small", href: "/goals", views: ["overview", "commercial"], allowedSizes: ["small", "medium"] },
   { key: "next-year-mrr", label: "MRR do próximo ano", description: "Receita projetada para o próximo ano", defaultSize: "small", href: "/contracts", views: ["commercial"], allowedSizes: ["small", "medium"] },
   { key: "alerts", label: "Atenção necessária", description: "Retornos, vencimentos e riscos", defaultSize: "full", href: "/meetings", views: ["overview", "commercial"], allowedSizes: ["large", "full"] },
-  { key: "goal-progress", label: "Progresso da meta", description: "Meta mensal, trimestral ou anual", defaultSize: "full", href: "/goals", views: ["commercial"], allowedSizes: ["large", "full"] },
+  { key: "goal-progress", label: "Progresso da meta", description: "Meta mensal, trimestral ou anual", defaultSize: "full", href: "/goals", views: ["overview", "commercial"], allowedSizes: ["large", "full"] },
   { key: "mrr-evolution", label: "Evolução do MRR", description: "Receita acumulada ao longo do ano", defaultSize: "large", href: "/contracts", views: ["commercial"], allowedSizes: ["medium", "large", "full"] },
   { key: "revenue-composition", label: "Composição da receita", description: "MRR separado por tipo", defaultSize: "medium", href: "/contracts", views: ["commercial"], allowedSizes: ["medium", "large"] },
   { key: "pipeline", label: "Pipeline ponderado", description: "Valor esperado dos negócios abertos", defaultSize: "small", href: "/meetings", views: ["overview", "commercial"], allowedSizes: ["small", "medium"] },
@@ -59,13 +59,43 @@ export const DASHBOARD_BLOCKS: BlockDefinition[] = [
   { key: "recent-movements", label: "Movimentações recentes", description: "Entradas, baixas e ajustes", defaultSize: "medium", href: "/products", store: true, views: ["store"], allowedSizes: ["medium", "large"] },
 ];
 
+// Defaults curados: cada visão já vem com um recorte limpo e bonito, contando uma
+// história clara. Os demais blocos ficam disponíveis em "Gráficos e cards" para quem
+// quiser adicionar — assim o padrão nunca chega poluído.
+function buildLayout(entries: [DashboardBlockKey, DashboardBlockSize][]): DashboardBlockPreference[] {
+  return entries.map(([key, size]) => ({ key, size }));
+}
+
 export const DEFAULT_DASHBOARD_LAYOUTS: Record<DashboardView, DashboardBlockPreference[]> = {
-  overview: ["mrr-active", "period-mrr", "pipeline", "inventory-summary", "sales-summary", "alerts"].map((key) => {
-    const block = DASHBOARD_BLOCKS.find((item) => item.key === key)!;
-    return { key: block.key, size: block.defaultSize };
-  }),
-  commercial: DASHBOARD_BLOCKS.filter((block) => block.views.includes("commercial")).map((block) => ({ key: block.key, size: block.defaultSize })),
-  store: DASHBOARD_BLOCKS.filter((block) => block.views.includes("store")).map((block) => ({ key: block.key, size: block.defaultSize })),
+  // Visão geral (clientes completos): panorama cruzado comercial + loja.
+  overview: buildLayout([
+    ["mrr-active", "small"],
+    ["period-mrr", "small"],
+    ["sales-summary", "medium"],
+    ["inventory-summary", "medium"],
+    ["goal-progress", "full"],
+    ["alerts", "full"],
+  ]),
+  // Comercial: a jornada da receita recorrente, sem excesso de indicadores avançados.
+  commercial: buildLayout([
+    ["mrr-active", "small"],
+    ["active-contracts", "small"],
+    ["period-mrr", "small"],
+    ["next-year-mrr", "small"],
+    ["goal-progress", "full"],
+    ["mrr-evolution", "large"],
+    ["revenue-composition", "medium"],
+    ["client-ranking", "full"],
+    ["alerts", "full"],
+  ]),
+  // Loja: receita e lucro primeiro, depois giro de produtos e movimentações.
+  store: buildLayout([
+    ["sales-summary", "medium"],
+    ["inventory-summary", "medium"],
+    ["sales-by-product", "medium"],
+    ["stock-levels", "medium"],
+    ["recent-movements", "medium"],
+  ]),
 };
 
 const SIZE_CLASSES: Record<DashboardBlockSize, string> = {

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { chartTokens, chartTooltipStyle } from "@/lib/chart-theme";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -579,5 +580,5 @@ function StockMetric({ label, value, icon, alert = false }: { label: string; val
 }
 
 function StockChart({ title, data, primaryKey, secondaryKey }: { title: string; data: { name: string; [key: string]: string | number }[]; primaryKey: string; secondaryKey?: string }) {
-  return <Card className="border-border/50"><CardHeader><CardTitle className="text-base">{title}</CardTitle></CardHeader><CardContent>{data.length === 0 ? <p className="py-14 text-center text-sm text-muted-foreground">Os dados aparecerão aqui.</p> : <div className="h-56"><ResponsiveContainer width="100%" height="100%"><BarChart data={data} margin={{ left: -22, right: 4 }}><CartesianGrid strokeDasharray="3 3" className="stroke-border" /><XAxis dataKey="name" fontSize={10} tickFormatter={(value: string) => value.length > 10 ? `${value.slice(0, 10)}…` : value} /><YAxis fontSize={10} /><Tooltip contentStyle={{ borderRadius: 8 }} /><Bar dataKey={primaryKey} fill="oklch(0.75 0.15 195)" radius={[4, 4, 0, 0]} />{secondaryKey && <Bar dataKey={secondaryKey} fill="oklch(0.7 0.17 155)" radius={[4, 4, 0, 0]} />}</BarChart></ResponsiveContainer></div>}</CardContent></Card>;
+  return <Card className="border-border/50"><CardHeader><CardTitle className="text-base">{title}</CardTitle></CardHeader><CardContent>{data.length === 0 ? <p className="py-14 text-center text-sm text-muted-foreground">Os dados aparecerão aqui.</p> : <div className="h-56"><ResponsiveContainer width="100%" height="100%"><BarChart data={data} margin={{ left: -22, right: 4 }}><CartesianGrid strokeDasharray="3 3" className="stroke-border" /><XAxis dataKey="name" stroke={chartTokens.axis} fontSize={10} tickFormatter={(value: string) => value.length > 10 ? `${value.slice(0, 10)}…` : value} /><YAxis stroke={chartTokens.axis} fontSize={10} /><Tooltip contentStyle={chartTooltipStyle} cursor={{ fill: "color-mix(in oklab, var(--muted) 50%, transparent)" }} /><Bar dataKey={primaryKey} fill={chartTokens.cyan} radius={[4, 4, 0, 0]} />{secondaryKey && <Bar dataKey={secondaryKey} fill={chartTokens.emerald} radius={[4, 4, 0, 0]} />}</BarChart></ResponsiveContainer></div>}</CardContent></Card>;
 }

@@ -17,21 +17,16 @@ import { Contract, ContractStatus, RevenueType } from "@/lib/types";
 import { useSortable } from "@/hooks/use-sortable";
 import { SortableHeader } from "@/components/sortable-header";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, PieChart, Pie, CartesianGrid } from "recharts";
+import { chartTokens, chartSeries, chartTooltipStyle } from "@/lib/chart-theme";
 
 const COLORS = {
-  cyan: "oklch(0.75 0.15 195)",
-  blue: "oklch(0.65 0.15 250)",
-  emerald: "oklch(0.7 0.17 155)",
-  amber: "oklch(0.8 0.15 75)",
-  rose: "oklch(0.65 0.2 15)",
-  purple: "oklch(0.65 0.2 300)",
-  muted: "oklch(0.28 0.01 260)",
-  text: "oklch(0.65 0.01 260)",
-  bg: "oklch(0.18 0.005 260)",
-  border: "oklch(0.28 0.01 260)",
+  cyan: chartTokens.cyan,
+  amber: chartTokens.amber,
+  muted: chartTokens.grid,
+  text: chartTokens.axis,
 };
 
-const PIE_COLORS = [COLORS.cyan, COLORS.blue, COLORS.emerald, COLORS.amber, COLORS.purple];
+const PIE_COLORS = chartSeries;
 
 const statusColors: Record<ContractStatus, string> = {
   Ativo: "bg-orbi-emerald/20 text-orbi-emerald",
@@ -197,7 +192,7 @@ export default function ContractsPage() {
                     <XAxis type="number" stroke={COLORS.text} fontSize={11} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
                     <YAxis type="category" dataKey="client" stroke={COLORS.text} fontSize={10} width={120} />
                     <Tooltip
-                      contentStyle={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: "8px" }}
+                      contentStyle={chartTooltipStyle}
                       formatter={(value) => [currency(Number(value)), "MRR"]}
                     />
                     <Bar dataKey="mrr" radius={[0, 4, 4, 0]}>
@@ -232,7 +227,7 @@ export default function ContractsPage() {
                       innerRadius={45}
                       outerRadius={75}
                       strokeWidth={2}
-                      stroke="oklch(0.15 0.005 260)"
+                      stroke="var(--card)"
                       label={(props) => `${props.name}: ${currency(Number(props.value))}`}
                     >
                       {revenueByType.map((_, i) => (
@@ -240,7 +235,7 @@ export default function ContractsPage() {
                       ))}
                     </Pie>
                     <Tooltip
-                      contentStyle={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: "8px" }}
+                      contentStyle={chartTooltipStyle}
                       formatter={(value) => [currency(Number(value)), ""]}
                     />
                   </PieChart>

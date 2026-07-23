@@ -14,6 +14,8 @@ import { AppFeatureKey, ModuleKey } from "@/lib/types";
 import { profileImageUrl, profileInitials, removeProfileImage, uploadProfileImage } from "@/lib/profile-image";
 import { formatFileSize, optimizeImage } from "@/lib/image-optimizer";
 import { removeProductImages } from "@/lib/product-images";
+import { allBackgroundPaths, removeBackgroundImages } from "@/lib/background-image";
+import { BackgroundSettings } from "@/components/background-settings";
 
 const THEMES: { key: ThemeKey; label: string; description: string; icon: React.ReactNode; preview: string[] }[] = [
   {
@@ -90,6 +92,7 @@ export default function SettingsPage() {
     if (confirm("Isso vai apagar TODOS os dados da conta. Tem certeza?")) {
       await removeProfileImage(data.profile.imagePath).catch(() => undefined);
       await removeProductImages(data.products.flatMap((product) => product.imagePaths ?? [])).catch(() => undefined);
+      await removeBackgroundImages(allBackgroundPaths(data.profile.dashboardBackgrounds)).catch(() => undefined);
       resetData();
       toast.success("Dados apagados!");
     }
@@ -332,6 +335,8 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <BackgroundSettings />
 
       <Card className="border-border/50">
         <CardHeader>

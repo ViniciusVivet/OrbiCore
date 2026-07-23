@@ -30,21 +30,23 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine,
   ResponsiveContainer, BarChart, Bar, Cell, PieChart, Pie, LineChart as RLineChart, Line,
 } from "recharts";
+import { chartTokens, chartSeries, chartTooltipStyle, chartTooltipLabelStyle } from "@/lib/chart-theme";
+import { backgroundImageUrl, backgroundPathForView } from "@/lib/background-image";
 
 const COLORS = {
-  cyan: "oklch(0.75 0.15 195)",
-  blue: "oklch(0.65 0.15 250)",
-  emerald: "oklch(0.7 0.17 155)",
-  amber: "oklch(0.8 0.15 75)",
-  rose: "oklch(0.65 0.2 15)",
-  purple: "oklch(0.65 0.2 300)",
-  muted: "oklch(0.28 0.01 260)",
-  text: "oklch(0.65 0.01 260)",
-  bg: "oklch(0.18 0.005 260)",
-  border: "oklch(0.28 0.01 260)",
+  cyan: chartTokens.cyan,
+  blue: chartTokens.blue,
+  emerald: chartTokens.emerald,
+  amber: chartTokens.amber,
+  rose: chartTokens.rose,
+  purple: chartTokens.series3,
+  muted: chartTokens.grid,
+  text: chartTokens.axis,
+  bg: chartTokens.surface,
+  border: chartTokens.grid,
 };
 
-const PIE_COLORS = [COLORS.cyan, COLORS.blue, COLORS.emerald, COLORS.amber, COLORS.purple];
+const PIE_COLORS = chartSeries;
 
 type ChartType = "area" | "bar" | "line";
 type PeriodView = "month" | "quarter" | "year";
@@ -55,11 +57,7 @@ const CHART_ICONS: Record<ChartType, React.ReactNode> = {
   line: <LineChart className="h-4 w-4" />,
 };
 
-const tooltipStyle = {
-  background: COLORS.bg,
-  border: `1px solid ${COLORS.border}`,
-  borderRadius: "8px",
-};
+const tooltipStyle = chartTooltipStyle;
 
 export default function DashboardPage() {
   const { data, loaded, updateProfile } = useAppStore();
@@ -74,7 +72,8 @@ export default function DashboardPage() {
   const [selectedQuarter, setSelectedQuarter] = useState(currentQuarter);
   const [chartType, setChartType] = useState<ChartType>("area");
   const [dashboardView, setDashboardView] = useState<DashboardView>(data.profile.lastDashboardView ?? "overview");
-  const financialEnabled = data.profile.enabledModules.some((module) => ["contracts", "meetings", "goals", "payroll"].includes(module));
+  // "goals" é transversal (loja também tem metas), então não deve forçar a visão Comercial.
+  const financialEnabled = data.profile.enabledModules.some((module) => ["contracts", "meetings", "payroll"].includes(module));
   const storeEnabled = data.profile.enabledModules.some((module) => ["products", "sales"].includes(module));
   const availableViews = useMemo<DashboardView[]>(() => financialEnabled && storeEnabled
     ? ["overview", "commercial", "store"]
@@ -95,6 +94,7 @@ export default function DashboardPage() {
   const { contracts, meetings, payroll, profile } = data;
   const churnEnabled = profile.enabledFeatures?.includes("churn-risk-90d") ?? false;
   const showFinancialDashboard = financialEnabled;
+  const backgroundUrl = backgroundImageUrl(backgroundPathForView(profile.dashboardBackgrounds, dashboardView));
 
   // --- MRR Metrics ---
   const mrrActive = mrrActiveMonthly(contracts);
@@ -167,7 +167,16 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayoutProvider view={dashboardView}>
-    <div className="flex flex-col gap-6">
+    <div className={`relative flex flex-col gap-6 ${backgroundUrl ? "dashboard-has-wallpaper isolate" : ""}`}>
+      {backgroundUrl && (
+        <div aria-hidden className="pointer-events-none absolute -inset-3 -z-10 overflow-hidden sm:-inset-6">
+          <div
+            className="h-full w-full bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: `url("${backgroundUrl}")` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-background/85 to-background/70" />
+        </div>
+      )}
       {/* Header + Filters */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between" data-tour="welcome" style={{ order: -1 }}>
         <div>
@@ -481,7 +490,7 @@ export default function DashboardPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke={COLORS.muted} />
                     <XAxis dataKey="name" stroke={COLORS.text} fontSize={12} />
                     <YAxis stroke={COLORS.text} fontSize={12} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
-                    <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: "oklch(0.95 0 0)" }} formatter={(value) => [currency(Number(value)), ""]} />
+                    <Tooltip contentStyle={tooltipStyle} labelStyle={chartTooltipLabelStyle} formatter={(value) => [currency(Number(value)), ""]} />
                     <ReferenceLine y={yearlyGoal} stroke={COLORS.rose} strokeDasharray="5 5" label={{ value: "Meta", fill: COLORS.rose, fontSize: 11 }} />
                     <Area type="monotone" dataKey="mrrAcumulado" stroke={COLORS.cyan} fill="url(#mrrGrad)" strokeWidth={2} name="MRR Acumulado" />
                   </AreaChart>
@@ -490,7 +499,7 @@ export default function DashboardPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke={COLORS.muted} />
                     <XAxis dataKey="name" stroke={COLORS.text} fontSize={12} />
                     <YAxis stroke={COLORS.text} fontSize={12} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
-                    <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: "oklch(0.95 0 0)" }} formatter={(value) => [currency(Number(value)), ""]} />
+                    <Tooltip contentStyle={tooltipStyle} labelStyle={chartTooltipLabelStyle} formatter={(value) => [currency(Number(value)), ""]} />
                     <ReferenceLine y={yearlyGoal} stroke={COLORS.rose} strokeDasharray="5 5" label={{ value: "Meta", fill: COLORS.rose, fontSize: 11 }} />
                     <Bar dataKey="mrrAcumulado" fill={COLORS.cyan} radius={[4, 4, 0, 0]} name="MRR Acumulado" />
                   </BarChart>
@@ -499,7 +508,7 @@ export default function DashboardPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke={COLORS.muted} />
                     <XAxis dataKey="name" stroke={COLORS.text} fontSize={12} />
                     <YAxis stroke={COLORS.text} fontSize={12} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
-                    <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: "oklch(0.95 0 0)" }} formatter={(value) => [currency(Number(value)), ""]} />
+                    <Tooltip contentStyle={tooltipStyle} labelStyle={chartTooltipLabelStyle} formatter={(value) => [currency(Number(value)), ""]} />
                     <ReferenceLine y={yearlyGoal} stroke={COLORS.rose} strokeDasharray="5 5" label={{ value: "Meta", fill: COLORS.rose, fontSize: 11 }} />
                     <Line type="monotone" dataKey="mrrAcumulado" stroke={COLORS.cyan} strokeWidth={2} dot={{ fill: COLORS.cyan, r: 4 }} name="MRR Acumulado" />
                   </RLineChart>
@@ -534,7 +543,7 @@ export default function DashboardPage() {
                       innerRadius={50}
                       outerRadius={80}
                       strokeWidth={2}
-                      stroke="oklch(0.15 0.005 260)"
+                      stroke="var(--card)"
                     >
                       {revenueByType.map((_, i) => (
                         <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
