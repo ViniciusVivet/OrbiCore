@@ -99,7 +99,7 @@ export function BackgroundSettings() {
 
   const slotsToShow: { slot: Slot; label: string }[] =
     scope === "all"
-      ? [{ slot: "all", label: "Todas as áreas" }]
+      ? [{ slot: "all", label: availableViews.length === 1 ? VIEW_LABELS[availableViews[0]] : "Todas as áreas" }]
       : availableViews.map((view) => ({ slot: view, label: VIEW_LABELS[view] }));
 
   return (

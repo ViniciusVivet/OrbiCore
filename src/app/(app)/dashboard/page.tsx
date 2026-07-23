@@ -167,7 +167,7 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayoutProvider view={dashboardView}>
-    <div className={`relative flex flex-col gap-6 ${backgroundUrl ? "dashboard-has-wallpaper isolate" : ""}`}>
+    <div className={`relative flex flex-col gap-6 ${backgroundUrl ? "dashboard-has-wallpaper isolate min-h-full" : ""}`}>
       {backgroundUrl && (
         <div aria-hidden className="pointer-events-none absolute -inset-3 -z-10 overflow-hidden sm:-inset-6">
           <div
