@@ -15,6 +15,7 @@ import { currency, dateFormat, percent } from "@/lib/format";
 import { saleProfitAndMargin, productStock } from "@/lib/calculations";
 import { Sale } from "@/lib/types";
 import { toast } from "sonner";
+import { CustomizableCards } from "@/components/customizable-cards";
 
 type FormData = Omit<Sale, "id" | "createdAt">;
 
@@ -97,44 +98,56 @@ export default function SalesPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="border-border/50">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="h-4 w-4 text-orbi-cyan" />
-              <p className="text-sm text-muted-foreground">Receita Total</p>
-            </div>
-            <p className="text-2xl font-bold">{currency(totalRevenue)}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-border/50">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="h-4 w-4 text-orbi-emerald" />
-              <p className="text-sm text-muted-foreground">Lucro Total</p>
-            </div>
-            <p className="text-2xl font-bold text-orbi-emerald">{currency(totalProfit)}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-border/50">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 mb-1">
-              <ShoppingCart className="h-4 w-4 text-orbi-blue" />
-              <p className="text-sm text-muted-foreground">Itens Vendidos</p>
-            </div>
-            <p className="text-2xl font-bold">{totalItems}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-border/50">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 mb-1">
-              <BarChart3 className="h-4 w-4 text-orbi-amber" />
-              <p className="text-sm text-muted-foreground">Margem Média</p>
-            </div>
-            <p className="text-2xl font-bold">{percent(avgMargin, 1)}</p>
-          </CardContent>
-        </Card>
-      </div>
+      <CustomizableCards
+        pageKey="sales"
+        className="grid gap-4 md:grid-cols-4"
+        cards={[
+          { key: "revenue", label: "Receita Total", node: (
+            <Card className="h-full border-border/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2 mb-1">
+                  <DollarSign className="h-4 w-4 text-orbi-cyan" />
+                  <p className="text-sm text-muted-foreground">Receita Total</p>
+                </div>
+                <p className="text-2xl font-bold">{currency(totalRevenue)}</p>
+              </CardContent>
+            </Card>
+          ) },
+          { key: "profit", label: "Lucro Total", node: (
+            <Card className="h-full border-border/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2 mb-1">
+                  <TrendingUp className="h-4 w-4 text-orbi-emerald" />
+                  <p className="text-sm text-muted-foreground">Lucro Total</p>
+                </div>
+                <p className="text-2xl font-bold text-orbi-emerald">{currency(totalProfit)}</p>
+              </CardContent>
+            </Card>
+          ) },
+          { key: "items", label: "Itens Vendidos", node: (
+            <Card className="h-full border-border/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2 mb-1">
+                  <ShoppingCart className="h-4 w-4 text-orbi-blue" />
+                  <p className="text-sm text-muted-foreground">Itens Vendidos</p>
+                </div>
+                <p className="text-2xl font-bold">{totalItems}</p>
+              </CardContent>
+            </Card>
+          ) },
+          { key: "margin", label: "Margem Média", node: (
+            <Card className="h-full border-border/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2 mb-1">
+                  <BarChart3 className="h-4 w-4 text-orbi-amber" />
+                  <p className="text-sm text-muted-foreground">Margem Média</p>
+                </div>
+                <p className="text-2xl font-bold">{percent(avgMargin, 1)}</p>
+              </CardContent>
+            </Card>
+          ) },
+        ]}
+      />
 
       {products.length === 0 ? (
         <Card className="border-border/50">

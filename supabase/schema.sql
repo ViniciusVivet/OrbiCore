@@ -104,7 +104,7 @@ values (
   'profile-images',
   'profile-images',
   true,
-  2097152,
+  6291456,
   array['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 )
 on conflict (id) do update set
@@ -142,7 +142,7 @@ values (
   'product-images',
   'product-images',
   true,
-  524288,
+  6291456,
   array['image/webp']
 )
 on conflict (id) do update set
@@ -174,13 +174,13 @@ create policy "Users delete own product images"
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 
--- Papel de parede do dashboard: imagens otimizadas no cliente (webp), até 3 MB.
+-- Papel de parede do dashboard: imagens otimizadas no cliente (webp), até 8 MB.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
   'background-images',
   'background-images',
   true,
-  3145728,
+  8388608,
   array['image/webp']
 )
 on conflict (id) do update set

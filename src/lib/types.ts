@@ -206,7 +206,16 @@ export interface OrgProfile {
   dashboardLayout?: DashboardBlockPreference[];
   dashboardLayouts?: Partial<Record<DashboardView, DashboardBlockPreference[]>>;
   dashboardBackgrounds?: DashboardBackgrounds;
+  pageLayouts?: Partial<Record<CustomizablePageKey, PageCardsLayout>>;
   lastDashboardView?: DashboardView;
+}
+
+// Personalização dos cards em páginas fora do dashboard (produtos, vendas).
+export type CustomizablePageKey = "products" | "sales";
+
+export interface PageCardsLayout {
+  order: string[];
+  hidden: string[];
 }
 
 export type SyncStatus = "loading" | "synced" | "saving" | "offline" | "error";

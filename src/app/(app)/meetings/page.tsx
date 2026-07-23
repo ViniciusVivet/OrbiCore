@@ -297,7 +297,48 @@ export default function MeetingsPage() {
               <Button onClick={openNew} className="mt-4 gap-2"><Plus className="h-4 w-4" />Nova Reunião</Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* Mobile: cards */}
+            <div className="grid gap-3 p-3 md:hidden">
+              {meetings.map((m) => (
+                <article key={m.id} className="rounded-xl border border-border/60 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="truncate font-semibold">{m.clientLead}</h3>
+                      <p className="text-xs text-muted-foreground">{dateFormat(m.date)} · {m.channel}</p>
+                    </div>
+                    <Badge className={statusColors[m.status]}>{m.status}</Badge>
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    <div className="rounded-lg bg-muted/60 p-2.5">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">MRR Prev.</p>
+                      <p className="mt-0.5 truncate text-sm font-semibold">{currency(m.expectedMRR)}</p>
+                    </div>
+                    <div className="rounded-lg bg-muted/60 p-2.5">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Prob.</p>
+                      <p className="mt-0.5 truncate text-sm font-semibold">{percent(m.probability, 0)}</p>
+                    </div>
+                    <div className="rounded-lg bg-muted/60 p-2.5">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Receita Esp.</p>
+                      <p className="mt-0.5 truncate text-sm font-semibold">{currency(m.expectedRevenue)}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/50 pt-3">
+                    <Badge className={alertColors[m.alert] || "bg-muted"}>{m.alert}</Badge>
+                    <div className="flex gap-1">
+                      <Button variant="outline" size="sm" className="min-h-10 gap-2" onClick={() => openEdit(m)}>
+                        <Pencil className="h-4 w-4" />Editar
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-10 w-10" aria-label={`Excluir reunião com ${m.clientLead}`} onClick={() => deleteMeeting(m.id)}>
+                        <Trash2 className="h-4 w-4 text-orbi-rose" />
+                      </Button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+            {/* Desktop: tabela */}
+            <div className="hidden overflow-x-auto md:block">
               <Table>
                 <thead>
                   <tr className="border-b">
@@ -338,6 +379,7 @@ export default function MeetingsPage() {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>

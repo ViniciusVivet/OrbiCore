@@ -61,8 +61,8 @@ export function BackgroundSettings() {
     try {
       const optimized = await optimizeImage(file, {
         maxDimension: 2560,
-        targetBytes: 700 * 1024,
-        maxBytes: 1.6 * 1024 * 1024,
+        targetBytes: 900 * 1024,
+        maxBytes: 3 * 1024 * 1024,
       });
       setStatus({
         kind: "working",

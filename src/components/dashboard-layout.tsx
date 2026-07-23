@@ -167,7 +167,7 @@ export function DashboardLayoutProvider({ view, children }: { view: DashboardVie
 }
 
 export function DashboardGrid({ children }: { children: React.ReactNode }) {
-  const { layout, saveLayout, editing } = useDashboardLayout();
+  const { layout, saveLayout, editing, setEditing } = useDashboardLayout();
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 140, tolerance: 8 } }),
@@ -188,6 +188,17 @@ export function DashboardGrid({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </SortableContext>
+      {editing && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[80] flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <Button
+            className="pointer-events-auto min-h-12 gap-2 rounded-full px-5 shadow-2xl shadow-primary/25"
+            onClick={() => setEditing(false)}
+          >
+            <Check className="h-4 w-4" />
+            Concluir organização
+          </Button>
+        </div>
+      )}
     </DndContext>
   );
 }

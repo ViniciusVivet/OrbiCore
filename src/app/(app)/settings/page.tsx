@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Settings, Save, RotateCcw, Orbit, Check, Moon, Sun, Sparkles, Palette, GraduationCap, Building2, User, Upload, Trash2, SlidersHorizontal, Shield } from "lucide-react";
+import { Settings, Save, RotateCcw, Orbit, Check, Moon, Sun, Sparkles, Palette, GraduationCap, Building2, User, Upload, Trash2, SlidersHorizontal, Shield, TriangleAlert } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppStore } from "@/components/store-provider";
 import { useTheme, ThemeKey } from "@/components/theme-provider";
@@ -73,6 +73,35 @@ export default function SettingsPage() {
     }
   }, [loaded, data.profile.name, data.profile.profileType, data.profile.currentYear, data.profile.enabledModules, data.profile.enabledFeatures]);
 
+  const sameSet = (a: string[], b: string[]) =>
+    a.length === b.length && [...a].sort().join("|") === [...b].sort().join("|");
+  const dirty = loaded && (
+    name !== data.profile.name ||
+    profileType !== (data.profile.profileType ?? "company") ||
+    year !== data.profile.currentYear ||
+    !sameSet(enabledModules, data.profile.enabledModules) ||
+    !sameSet(enabledFeatures, data.profile.enabledFeatures ?? [])
+  );
+
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
+
+  function discardChanges() {
+    setName(data.profile.name);
+    setProfileType(data.profile.profileType ?? "company");
+    setYear(data.profile.currentYear);
+    setEnabledModules(data.profile.enabledModules);
+    setEnabledFeatures(data.profile.enabledFeatures ?? []);
+    toast.info("Alterações descartadas.");
+  }
+
   if (!loaded) return null;
 
   function toggleModule(key: ModuleKey) {
@@ -112,9 +141,9 @@ export default function SettingsPage() {
     setImageStatus({ kind: "working", text: "Preparando e reduzindo a foto..." });
     try {
       const optimized = await optimizeImage(file, {
-        maxDimension: 1000,
-        targetBytes: 220 * 1024,
-        maxBytes: 400 * 1024,
+        maxDimension: 1400,
+        targetBytes: 500 * 1024,
+        maxBytes: 2 * 1024 * 1024,
       });
       setImageStatus({ kind: "working", text: `Foto reduzida de ${formatFileSize(optimized.originalBytes)} para ${formatFileSize(optimized.optimizedBytes)}. Enviando...` });
       const imagePath = await uploadProfileImage(optimized.file, data.profile.imagePath);
@@ -167,7 +196,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${dirty ? "pb-24" : ""}`}>
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Configurações</h2>
         <p className="text-muted-foreground">Gerencie seu perfil e preferências</p>
@@ -426,6 +455,20 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {dirty && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[70] flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="pointer-events-auto flex w-full max-w-lg items-center gap-3 rounded-2xl border border-primary/30 bg-card/95 p-3 shadow-2xl backdrop-blur">
+            <TriangleAlert className="h-5 w-5 shrink-0 text-orbi-amber" />
+            <p className="min-w-0 flex-1 text-sm font-medium">Você tem alterações não salvas.</p>
+            <Button variant="ghost" size="sm" onClick={discardChanges}>Descartar</Button>
+            <Button size="sm" className="gap-1.5" onClick={handleSave}>
+              <Save className="h-4 w-4" />
+              Salvar
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

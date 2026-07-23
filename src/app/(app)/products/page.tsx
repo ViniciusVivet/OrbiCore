@@ -20,6 +20,7 @@ import { Product, StockMovement, StockMovementType } from "@/lib/types";
 import { toast } from "sonner";
 import { formatFileSize, optimizeImage } from "@/lib/image-optimizer";
 import { MAX_PRODUCT_IMAGES, productImageUrl, removeProductImages, uploadProductImage } from "@/lib/product-images";
+import { CustomizableCards } from "@/components/customizable-cards";
 
 type FormData = Omit<Product, "id" | "createdAt">;
 type MovementForm = Omit<StockMovement, "id" | "createdAt"> & {
@@ -173,8 +174,8 @@ export default function ProductsPage() {
         setImageStatus({ kind: "working", text: `Preparando foto ${index + 1} de ${Math.min(files.length, available)}...` });
         const optimized = await optimizeImage(file, {
           maxDimension: 1600,
-          targetBytes: 350 * 1024,
-          maxBytes: 500 * 1024,
+          targetBytes: 600 * 1024,
+          maxBytes: 2 * 1024 * 1024,
         });
         setImageStatus({ kind: "working", text: `Foto ${index + 1} reduzida de ${formatFileSize(optimized.originalBytes)} para ${formatFileSize(optimized.optimizedBytes)}. Enviando...` });
         uploadedPaths.push(await uploadProductImage(product.id, optimized.file));
@@ -241,14 +242,18 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-        <StockMetric label="Produtos" value={String(products.length)} icon={<Package className="h-4 w-4 text-orbi-cyan" />} />
-        <StockMetric label="Unidades" value={String(totalUnits)} icon={<Boxes className="h-4 w-4 text-orbi-blue" />} />
-        <StockMetric label="Valor em estoque" value={currency(totalValue)} icon={<Banknote className="h-4 w-4 text-orbi-emerald" />} />
-        <StockMetric label="Venda potencial" value={currency(potentialValue)} icon={<ShoppingCart className="h-4 w-4 text-orbi-emerald" />} />
-        <StockMetric label="Para repor" value={String(restockCount)} alert={restockCount > 0} icon={<AlertTriangle className="h-4 w-4 text-orbi-amber" />} />
-        <StockMetric label="Sem estoque" value={String(outOfStockCount)} alert={outOfStockCount > 0} icon={<AlertTriangle className="h-4 w-4 text-orbi-rose" />} />
-      </div>
+      <CustomizableCards
+        pageKey="products"
+        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6"
+        cards={[
+          { key: "products", label: "Produtos", node: <StockMetric label="Produtos" value={String(products.length)} icon={<Package className="h-4 w-4 text-orbi-cyan" />} /> },
+          { key: "units", label: "Unidades", node: <StockMetric label="Unidades" value={String(totalUnits)} icon={<Boxes className="h-4 w-4 text-orbi-blue" />} /> },
+          { key: "stock-value", label: "Valor em estoque", node: <StockMetric label="Valor em estoque" value={currency(totalValue)} icon={<Banknote className="h-4 w-4 text-orbi-emerald" />} /> },
+          { key: "potential", label: "Venda potencial", node: <StockMetric label="Venda potencial" value={currency(potentialValue)} icon={<ShoppingCart className="h-4 w-4 text-orbi-emerald" />} /> },
+          { key: "restock", label: "Para repor", node: <StockMetric label="Para repor" value={String(restockCount)} alert={restockCount > 0} icon={<AlertTriangle className="h-4 w-4 text-orbi-amber" />} /> },
+          { key: "out", label: "Sem estoque", node: <StockMetric label="Sem estoque" value={String(outOfStockCount)} alert={outOfStockCount > 0} icon={<AlertTriangle className="h-4 w-4 text-orbi-rose" />} /> },
+        ]}
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <StockChart title="Menores estoques" data={stockChartData} primaryKey="estoque" secondaryKey="minimo" />

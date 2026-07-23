@@ -275,7 +275,45 @@ export default function ContractsPage() {
               </Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* Mobile: cards */}
+            <div className="grid gap-3 p-3 md:hidden">
+              {contracts.map((c) => (
+                <article key={c.id} className="rounded-xl border border-border/60 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="truncate font-semibold">{c.client}</h3>
+                      <p className="text-xs text-muted-foreground">{dateFormat(c.saleDate)} · {c.durationMonths}m · {c.revenueType}</p>
+                    </div>
+                    <Badge className={statusColors[c.status]}>{c.status}</Badge>
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    <div className="rounded-lg bg-muted/60 p-2.5">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Fee</p>
+                      <p className="mt-0.5 truncate text-sm font-semibold">{currency(c.currentFee)}</p>
+                    </div>
+                    <div className="rounded-lg bg-muted/60 p-2.5">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">MRR Ano</p>
+                      <p className="mt-0.5 truncate text-sm font-semibold">{currency(c.mrrYear)}</p>
+                    </div>
+                    <div className="rounded-lg bg-muted/60 p-2.5">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">MRR Próx</p>
+                      <p className="mt-0.5 truncate text-sm font-semibold">{currency(c.mrrNextYear)}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex justify-end gap-1 border-t border-border/50 pt-3">
+                    <Button variant="outline" size="sm" className="min-h-10 gap-2" onClick={() => openEdit(c)}>
+                      <Pencil className="h-4 w-4" />Editar
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-10 w-10" aria-label={`Excluir contrato de ${c.client}`} onClick={() => deleteContract(c.id)}>
+                      <Trash2 className="h-4 w-4 text-orbi-rose" />
+                    </Button>
+                  </div>
+                </article>
+              ))}
+            </div>
+            {/* Desktop: tabela */}
+            <div className="hidden overflow-x-auto md:block">
               <Table>
                 <thead>
                   <tr className="border-b">
@@ -329,6 +367,7 @@ export default function ContractsPage() {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>
