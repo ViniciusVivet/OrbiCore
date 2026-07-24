@@ -246,7 +246,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <nav className="flex gap-2 overflow-x-auto rounded-xl border border-border/60 bg-card/40 p-1.5" aria-label="Áreas do dashboard">
+      <nav className="flex gap-2 overflow-x-auto rounded-xl border border-border/60 bg-card/40 p-1.5" aria-label="Áreas do dashboard" data-tour="area-tabs">
         {availableViews.map((view) => (
           <button
             key={view}
