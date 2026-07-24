@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,12 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const router = useRouter();
+
+  // Vindo da landing com "criar conta" → já abre no modo cadastro.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("criar") || params.has("signup")) setIsLogin(false);
+  }, []);
 
   function switchMode() {
     setIsLogin(!isLogin);

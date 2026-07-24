@@ -204,3 +204,39 @@
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
+
+/* =============================================
+   Landing page — cena de órbita animada
+   ============================================= */
+@keyframes orbi-spin { to { transform: rotate(360deg); } }
+@keyframes orbi-spin-rev { to { transform: rotate(-360deg); } }
+@keyframes orbi-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes orbi-fade-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+.orbi-fade-up { animation: orbi-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.orbi-scene { position: relative; display: grid; place-items: center; }
+.orbi-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid color-mix(in oklab, var(--orbi-cyan) 40%, transparent);
+  transform-style: preserve-3d;
+}
+.orbi-ring::after {
+  content: "";
+  position: absolute;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--orbi-cyan);
+  box-shadow: 0 0 14px 2px color-mix(in oklab, var(--orbi-cyan) 70%, transparent);
+  top: -5px; left: 50%; margin-left: -5px;
+}
+.orbi-ring-1 { inset: 0; animation: orbi-spin 18s linear infinite; }
+.orbi-ring-2 { inset: 14%; animation: orbi-spin-rev 26s linear infinite; border-color: color-mix(in oklab, var(--orbi-blue) 45%, transparent); }
+.orbi-ring-2::after { background: var(--orbi-blue); box-shadow: 0 0 14px 2px color-mix(in oklab, var(--orbi-blue) 70%, transparent); }
+.orbi-ring-3 { inset: 30%; animation: orbi-spin 34s linear infinite; border-color: color-mix(in oklab, var(--orbi-emerald) 45%, transparent); }
+.orbi-ring-3::after { background: var(--orbi-emerald); box-shadow: 0 0 14px 2px color-mix(in oklab, var(--orbi-emerald) 70%, transparent); }
+.orbi-core { animation: orbi-float 6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .orbi-fade-up, .orbi-ring-1, .orbi-ring-2, .orbi-ring-3, .orbi-core { animation: none; }
+}

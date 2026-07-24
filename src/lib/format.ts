@@ -6,7 +6,11 @@ export function currency(value: number): string {
 }
 
 export function percent(value: number, decimals = 1): string {
-  return (value * 100).toFixed(decimals) + "%";
+  return new Intl.NumberFormat("pt-BR", {
+    style: "percent",
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(Number.isFinite(value) ? value : 0);
 }
 
 export function dateFormat(iso: string): string {

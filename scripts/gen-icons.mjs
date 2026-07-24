@@ -157,4 +157,30 @@ for (const t of targets) {
   writeFileSync(join(OUT, t.file), render(t.size, t.opts));
   console.log("wrote", t.file);
 }
+
+// Imagem de compartilhamento (Open Graph / Twitter) 1200x630, órbita centralizada.
+{
+  const W = 1200, H = 630, SS = 2;
+  const rgba = Buffer.alloc(W * H * 4);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      let r = 0, g = 0, b = 0;
+      for (let sy = 0; sy < SS; sy++) {
+        for (let sx = 0; sx < SS; sx++) {
+          const u = ((x + (sx + 0.5) / SS) - (W - H) / 2) / H;
+          const v = (y + (sy + 0.5) / SS) / H;
+          const s = sample(u, v, { scale: 0.58, rounded: false });
+          r += s[0]; g += s[1]; b += s[2];
+        }
+      }
+      const n = SS * SS, i = (y * W + x) * 4;
+      rgba[i] = Math.round(r / n);
+      rgba[i + 1] = Math.round(g / n);
+      rgba[i + 2] = Math.round(b / n);
+      rgba[i + 3] = 255;
+    }
+  }
+  writeFileSync(join(OUT, "og-image.png"), encodePNG(W, H, rgba));
+  console.log("wrote og-image.png");
+}
 console.log("done");

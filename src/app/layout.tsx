@@ -14,15 +14,57 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
+const description =
+  "Gestão visual para pequenos negócios: contratos e MRR, estoque, vendas, pipeline, folha e metas — num painel único, bonito e fácil de usar.";
+
 export const metadata: Metadata = {
-  title: "OrbiCore",
-  description: "Plataforma visual de gestão para pequenos negócios",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "OrbiCore — Gestão visual para pequenos negócios",
+    template: "%s · OrbiCore",
+  },
+  description,
   applicationName: "OrbiCore",
   manifest: "/manifest.webmanifest",
+  keywords: [
+    "gestão para pequenos negócios",
+    "MRR",
+    "receita recorrente",
+    "controle de estoque",
+    "gestão de contratos",
+    "pipeline de vendas",
+    "dashboard financeiro",
+    "OrbiCore",
+    "Orbitamos",
+  ],
+  authors: [{ name: "Orbitamos" }],
+  creator: "Orbitamos",
+  publisher: "Orbitamos",
+  robots: { index: true, follow: true },
+  alternates: { canonical: "/" },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "OrbiCore",
+  },
+  openGraph: {
+    type: "website",
+    locale: "pt_BR",
+    url: "/",
+    siteName: "OrbiCore",
+    title: "OrbiCore — Gestão visual para pequenos negócios",
+    description,
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "OrbiCore" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "OrbiCore — Gestão visual para pequenos negócios",
+    description,
+    images: ["/og-image.png"],
   },
   icons: {
     icon: [

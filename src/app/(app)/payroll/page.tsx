@@ -11,6 +11,7 @@ import { useAppStore } from "@/components/store-provider";
 import { currency, monthName } from "@/lib/format";
 import { calcPayroll } from "@/lib/calculations";
 import { PayrollMonth } from "@/lib/types";
+import { toast } from "sonner";
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 
@@ -65,6 +66,7 @@ export default function PayrollPage() {
       year,
       ...form,
     });
+    toast.success(`${monthName(selectedMonth)} salvo e calculado.`);
   }
 
   const payrollData: PayrollMonth = {
