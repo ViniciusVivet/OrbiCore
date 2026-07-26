@@ -84,13 +84,66 @@ async function saveToSupabase(appData: AppData, revision: number): Promise<numbe
   }
 }
 
+const SAVE_DEBOUNCE_MS = 800;
+
 export function useStore() {
   const [data, setData] = useState<AppData>(() => createEmptyData());
   const [loaded, setLoaded] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("loading");
   const userIdRef = useRef<string | null>(null);
   const revisionRef = useRef(0);
-  const saveQueueRef = useRef(Promise.resolve());
+  // Espelho síncrono do estado, para compor updates seguidos sem depender do re-render.
+  const dataRef = useRef<AppData>(data);
+  // Dados pendentes de salvar (coalescidos) + controle de debounce e concorrência.
+  const dirtyRef = useRef<AppData | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savingRef = useRef(false);
+
+  const applyData = useCallback((next: AppData) => {
+    dataRef.current = next;
+    setData(next);
+  }, []);
+
+  // Persiste no Supabase o último estado pendente. Um save por vez, e no conflito
+  // adota o remoto SEM re-salvar — isso mata o loop de conflito que sobrecarregava o banco.
+  const flush = useCallback(async () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    const userId = userIdRef.current;
+    if (!userId || savingRef.current || !dirtyRef.current) return;
+
+    const payload = dirtyRef.current;
+    dirtyRef.current = null;
+    savingRef.current = true;
+    const revision = await saveToSupabase(payload, revisionRef.current);
+    savingRef.current = false;
+
+    if (revision !== null) {
+      revisionRef.current = revision;
+      setSyncStatus("synced");
+      // Se chegaram edições enquanto salvava, agenda mais um save.
+      if (dirtyRef.current) saveTimerRef.current = setTimeout(() => { void flush(); }, SAVE_DEBOUNCE_MS);
+      return;
+    }
+
+    // Conflito/erro: recarrega o remoto e descarta o pendente local para não
+    // reenviar uma versão desatualizada em loop (a mudança segue no cache local).
+    const remote = await loadFromSupabase(userId);
+    if (remote) {
+      revisionRef.current = remote.revision;
+      applyData(remote.data);
+      saveLocalCache(userId, remote.data);
+    }
+    dirtyRef.current = null;
+    setSyncStatus(navigator.onLine ? "error" : "offline");
+  }, [applyData]);
+
+  const scheduleSave = useCallback(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => { void flush(); }, SAVE_DEBOUNCE_MS);
+  }, [flush]);
 
   useEffect(() => {
     async function init() {
@@ -105,12 +158,12 @@ export function useStore() {
 
       // O cache é isolado por usuário. A chave antiga só serve como migração.
       const cached = loadLocalCache(user.id);
-      if (cached) setData(cached);
+      if (cached) applyData(cached);
 
       const remote = await loadFromSupabase(user.id);
       if (remote) {
         revisionRef.current = remote.revision;
-        setData(remote.data);
+        applyData(remote.data);
         saveLocalCache(user.id, remote.data);
         localStorage.removeItem(LEGACY_STORAGE_KEY);
         setSyncStatus("synced");
@@ -119,7 +172,7 @@ export function useStore() {
         setSyncStatus(navigator.onLine ? "error" : "offline");
       } else if (!cached) {
         const emptyData = createEmptyData();
-        setData(emptyData);
+        applyData(emptyData);
         saveLocalCache(user.id, emptyData);
         const saved = await createInSupabase(user.id, emptyData);
         setSyncStatus(saved ? "synced" : "offline");
@@ -134,35 +187,34 @@ export function useStore() {
     }
 
     init();
-  }, []);
+  }, [applyData]);
+
+  // Garante que o último save pendente vá embora antes de sair/minimizar a aba.
+  useEffect(() => {
+    function flushIfDirty() {
+      if (dirtyRef.current) void flush();
+    }
+    function onVisibility() {
+      if (document.visibilityState === "hidden") flushIfDirty();
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", flushIfDirty);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", flushIfDirty);
+    };
+  }, [flush]);
 
   const update = useCallback((updater: (prev: AppData) => AppData) => {
-    setData((prev) => {
-      const next = updater(prev);
-      const userId = userIdRef.current;
-      if (userId) {
-        saveLocalCache(userId, next);
-        setSyncStatus("saving");
-        saveQueueRef.current = saveQueueRef.current.then(async () => {
-          const revision = await saveToSupabase(next, revisionRef.current);
-          if (revision !== null) {
-            revisionRef.current = revision;
-            setSyncStatus("synced");
-            return;
-          }
-
-          const remote = await loadFromSupabase(userId);
-          if (remote) {
-            revisionRef.current = remote.revision;
-            setData(remote.data);
-            saveLocalCache(userId, remote.data);
-          }
-          setSyncStatus(navigator.onLine ? "error" : "offline");
-        });
-      }
-      return next;
-    });
-  }, []);
+    const next = updater(dataRef.current);
+    applyData(next);
+    const userId = userIdRef.current;
+    if (!userId) return;
+    saveLocalCache(userId, next);
+    dirtyRef.current = next;
+    setSyncStatus("saving");
+    scheduleSave();
+  }, [applyData, scheduleSave]);
 
   // --- Profile ---
   const updateProfile = useCallback((profile: Partial<OrgProfile>) => {
@@ -309,6 +361,12 @@ export function useStore() {
 
   // --- Logout ---
   const logout = useCallback(async () => {
+    // Descarta saves pendentes/agendados para não escrever após o signOut.
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    dirtyRef.current = null;
     const supabase = createClient();
     await supabase.auth.signOut();
     if (userIdRef.current) localStorage.removeItem(storageKey(userIdRef.current));
