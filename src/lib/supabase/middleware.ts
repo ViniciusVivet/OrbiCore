@@ -2,6 +2,15 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
+  // Prefetch do Next.js (Link prefetch) não precisa validar sessão — a navegação
+  // real revalida. Sem isso, cada link prefetchado dispara um getUser() no Supabase,
+  // multiplicando a carga de auth (a sidebar prefetcha ~8 links por página).
+  const isPrefetch =
+    request.headers.get("next-router-prefetch") === "1" ||
+    request.headers.get("purpose") === "prefetch" ||
+    (request.headers.get("sec-purpose") ?? "").includes("prefetch");
+  if (isPrefetch) return NextResponse.next({ request });
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
