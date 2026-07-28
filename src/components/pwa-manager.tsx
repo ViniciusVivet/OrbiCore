@@ -47,7 +47,8 @@ export function PwaManager() {
   const [mode, setMode] = useState<"android" | "ios" | null>(null);
   const [visible, setVisible] = useState(false);
 
-  // Registra o service worker (necessário para instalação no Android/Chrome).
+  // Registra o service worker. O navegador verifica novas versões naturalmente
+  // sem recarregar à força uma aba em que o usuário esteja preenchendo dados.
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
     const register = () => navigator.serviceWorker.register("/sw.js").catch(() => undefined);
