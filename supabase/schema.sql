@@ -16,8 +16,8 @@ create table if not exists public.app_data (
 alter table public.app_data
   add column if not exists revision bigint not null default 0;
 
--- Index para busca rapida por user_id
-create index if not exists idx_app_data_user_id on public.app_data(user_id);
+-- Busca por user_id já é atendida pelo índice da constraint UNIQUE
+-- (app_data_user_id_key). Não criamos índice extra para não duplicar.
 
 -- RLS: cada usuario so ve/edita seus proprios dados
 alter table public.app_data enable row level security;
@@ -74,11 +74,9 @@ begin
   where user_id = auth.uid() and revision = expected_revision
   returning revision into next_revision;
 
-  if next_revision is null then
-    raise exception 'APP_DATA_CONFLICT' using errcode = '40001';
-  end if;
-
-  return next_revision;
+  -- Conflito esperado não deve abortar a transação: exceções geram rollback,
+  -- logs e CPU desnecessários quando duas abas salvam a mesma revisão.
+  return coalesce(next_revision, -1);
 end;
 $$;
 

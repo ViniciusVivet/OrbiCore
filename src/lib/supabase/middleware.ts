@@ -2,6 +2,13 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
+  const isApiRoute = request.nextUrl.pathname.startsWith("/api");
+  const isAuthCallback = request.nextUrl.pathname.startsWith("/auth");
+
+  // Essas rotas validam as próprias credenciais e não precisam de outra
+  // chamada ao Auth antes de executar.
+  if (isApiRoute || isAuthCallback) return NextResponse.next({ request });
+
   // Prefetch do Next.js (Link prefetch) não precisa validar sessão — a navegação
   // real revalida. Sem isso, cada link prefetchado dispara um getUser() no Supabase,
   // multiplicando a carga de auth (a sidebar prefetcha ~8 links por página).
@@ -39,14 +46,6 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const isAuthPage = request.nextUrl.pathname.startsWith("/login");
-  const isApiRoute = request.nextUrl.pathname.startsWith("/api");
-  const isAuthCallback = request.nextUrl.pathname.startsWith("/auth");
-
-  // Allow API routes and auth callback through
-  if (isApiRoute || isAuthCallback) {
-    return supabaseResponse;
-  }
-
   // Not logged in and trying to access app
   if (!user && !isAuthPage) {
     const url = request.nextUrl.clone();

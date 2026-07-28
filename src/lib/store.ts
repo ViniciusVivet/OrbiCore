@@ -70,17 +70,25 @@ async function createInSupabase(userId: string, appData: AppData): Promise<boole
   }
 }
 
-async function saveToSupabase(appData: AppData, revision: number): Promise<number | null> {
+type SaveResult =
+  | { status: "saved"; revision: number }
+  | { status: "conflict" }
+  | { status: "error" };
+
+async function saveToSupabase(appData: AppData, revision: number): Promise<SaveResult> {
   try {
     const supabase = createClient();
     const { data, error } = await supabase.rpc("save_app_data", {
       new_data: appData,
       expected_revision: revision,
     });
-    if (error) return null;
-    return Number(data);
+    if (error) return { status: "error" };
+    const nextRevision = Number(data);
+    if (nextRevision === -1) return { status: "conflict" };
+    if (!Number.isSafeInteger(nextRevision) || nextRevision < 0) return { status: "error" };
+    return { status: "saved", revision: nextRevision };
   } catch {
-    return null;
+    return { status: "error" };
   }
 }
 
@@ -117,11 +125,11 @@ export function useStore() {
     const payload = dirtyRef.current;
     dirtyRef.current = null;
     savingRef.current = true;
-    const revision = await saveToSupabase(payload, revisionRef.current);
+    const result = await saveToSupabase(payload, revisionRef.current);
     savingRef.current = false;
 
-    if (revision !== null) {
-      revisionRef.current = revision;
+    if (result.status === "saved") {
+      revisionRef.current = result.revision;
       setSyncStatus("synced");
       // Se chegaram edições enquanto salvava, agenda mais um save.
       if (dirtyRef.current) saveTimerRef.current = setTimeout(() => { void flush(); }, SAVE_DEBOUNCE_MS);
@@ -130,15 +138,16 @@ export function useStore() {
 
     // Conflito/erro: recarrega o remoto e descarta o pendente local para não
     // reenviar uma versão desatualizada em loop (a mudança segue no cache local).
-    const remote = await loadFromSupabase(userId);
-    if (remote) {
-      revisionRef.current = remote.revision;
-      applyData(remote.data);
-      saveLocalCache(userId, remote.data);
+    dirtyRef.current ??= payload;
+
+    if (result.status === "conflict") {
+      const remote = await loadFromSupabase(userId);
+      if (remote) {
+        revisionRef.current = remote.revision;
+      }
     }
-    dirtyRef.current = null;
     setSyncStatus(navigator.onLine ? "error" : "offline");
-  }, [applyData]);
+  }, []);
 
   const scheduleSave = useCallback(() => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -204,6 +213,17 @@ export function useStore() {
       window.removeEventListener("pagehide", flushIfDirty);
     };
   }, [flush]);
+
+  // Ao recuperar conexão, tenta novamente o payload preservado na fila/cache.
+  useEffect(() => {
+    function retryWhenOnline() {
+      if (!dirtyRef.current || savingRef.current) return;
+      setSyncStatus("saving");
+      scheduleSave();
+    }
+    window.addEventListener("online", retryWhenOnline);
+    return () => window.removeEventListener("online", retryWhenOnline);
+  }, [scheduleSave]);
 
   const update = useCallback((updater: (prev: AppData) => AppData) => {
     const next = updater(dataRef.current);
