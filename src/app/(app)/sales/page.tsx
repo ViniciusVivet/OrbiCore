@@ -16,6 +16,7 @@ import { saleProfitAndMargin, productStock } from "@/lib/calculations";
 import { Sale } from "@/lib/types";
 import { toast } from "sonner";
 import { CustomizableCards } from "@/components/customizable-cards";
+import { CurrencyInput } from "@/components/currency-input";
 
 type FormData = Omit<Sale, "id" | "createdAt">;
 
@@ -68,7 +69,14 @@ export default function SalesPage() {
   }
 
   function handleSave() {
-    if (!form.productId || !form.quantity) return;
+    if (!form.productId) {
+      toast.error("Selecione o produto vendido.");
+      return;
+    }
+    if (form.quantity <= 0) {
+      toast.error("Informe uma quantidade maior que zero.");
+      return;
+    }
     const product = products.find((item) => item.id === form.productId);
     const previous = editingId ? sales.find((sale) => sale.id === editingId) : undefined;
     const available = product ? productStock(product, sales, stockMovements) + (previous?.productId === product.id ? previous.quantity : 0) : 0;
@@ -267,11 +275,11 @@ export default function SalesPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Custo unitário</Label>
-                <Input type="number" min="0" step="0.01" value={form.unitCostPrice ?? ""} onChange={(e) => setForm({ ...form, unitCostPrice: Number(e.target.value) || 0 })} />
+                <CurrencyInput value={form.unitCostPrice ?? 0} onValueChange={(unitCostPrice) => setForm({ ...form, unitCostPrice })} />
               </div>
               <div className="space-y-2">
                 <Label>Preço da venda</Label>
-                <Input type="number" min="0" step="0.01" value={form.unitSalePrice ?? ""} onChange={(e) => setForm({ ...form, unitSalePrice: Number(e.target.value) || 0 })} />
+                <CurrencyInput value={form.unitSalePrice ?? 0} onValueChange={(unitSalePrice) => setForm({ ...form, unitSalePrice })} hint={false} />
               </div>
             </div>
             {form.productId && (() => {

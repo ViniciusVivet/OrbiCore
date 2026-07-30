@@ -12,6 +12,7 @@ import { currency, monthName } from "@/lib/format";
 import { calcPayroll } from "@/lib/calculations";
 import { PayrollMonth } from "@/lib/types";
 import { toast } from "sonner";
+import { CurrencyInput } from "@/components/currency-input";
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 
@@ -61,6 +62,10 @@ export default function PayrollPage() {
   }
 
   function handleSave() {
+    if (form.workDays <= 0) {
+      toast.error("Informe pelo menos um dia útil para calcular a folha.");
+      return;
+    }
     upsertPayroll({
       month: selectedMonth,
       year,
@@ -142,16 +147,16 @@ export default function PayrollPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Salário Base (R$)</Label>
-                <Input type="number" step="0.01" value={form.baseSalary || ""} onChange={(e) => setForm({ ...form, baseSalary: parseFloat(e.target.value) || 0 })} />
+                <CurrencyInput value={form.baseSalary} onValueChange={(baseSalary) => setForm({ ...form, baseSalary })} />
               </div>
               <div className="space-y-2">
                 <Label>Auxílio Home Office (R$)</Label>
-                <Input type="number" step="0.01" value={form.homeOffice || ""} onChange={(e) => setForm({ ...form, homeOffice: parseFloat(e.target.value) || 0 })} />
+                <CurrencyInput value={form.homeOffice} onValueChange={(homeOffice) => setForm({ ...form, homeOffice })} hint={false} />
               </div>
             </div>
             <div className="space-y-2">
               <Label>Comissão (R$)</Label>
-              <Input type="number" step="0.01" value={form.commission || ""} onChange={(e) => setForm({ ...form, commission: parseFloat(e.target.value) || 0 })} />
+              <CurrencyInput value={form.commission} onValueChange={(commission) => setForm({ ...form, commission })} hint={false} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -165,7 +170,7 @@ export default function PayrollPage() {
             </div>
             <div className="space-y-2">
               <Label>Outros Descontos (R$)</Label>
-              <Input type="number" step="0.01" value={form.otherDeductions || ""} onChange={(e) => setForm({ ...form, otherDeductions: parseFloat(e.target.value) || 0 })} />
+              <CurrencyInput value={form.otherDeductions} onValueChange={(otherDeductions) => setForm({ ...form, otherDeductions })} hint={false} />
             </div>
             <Button onClick={handleSave} className="w-full gap-2">
               <Save className="h-4 w-4" />

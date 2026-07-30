@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +19,7 @@ import { SortableHeader } from "@/components/sortable-header";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, PieChart, Pie, CartesianGrid } from "recharts";
 import { chartTokens, chartSeries, chartTooltipStyle } from "@/lib/chart-theme";
 import { toast } from "sonner";
+import { CurrencyInput } from "@/components/currency-input";
 
 const COLORS = {
   cyan: chartTokens.cyan,
@@ -52,6 +52,7 @@ const emptyForm: FormData = {
 
 type ContractRow = Contract & {
   currentFee: number;
+  nextYearFee: number;
   mrrYear: number;
   mrrNextYear: number;
   mInYear: number;
@@ -62,10 +63,11 @@ export default function ContractsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormData>(emptyForm);
+  const [formNextYearFee, setFormNextYearFee] = useState(0);
+  const [formNextYearTouched, setFormNextYearTouched] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("Todos");
   const [planningContract, setPlanningContract] = useState<Contract | null>(null);
   const [plannedMonthlyFee, setPlannedMonthlyFee] = useState(0);
-  const searchParams = useSearchParams();
 
   const year = loaded ? data.profile.currentYear : new Date().getFullYear();
   const filtered = loaded
@@ -78,6 +80,7 @@ export default function ContractsPage() {
     return {
       ...c,
       currentFee: contractFeeAt(c, now.getFullYear(), now.getMonth() + 1),
+      nextYearFee: contractFeeAt(c, year + 1, 1),
       mInYear,
       mrrYear: contractRevenueInYear(c, year),
       mrrNextYear: contractRevenueInYear(c, year + 1),
@@ -91,6 +94,8 @@ export default function ContractsPage() {
   function openNew() {
     setEditingId(null);
     setForm(emptyForm);
+    setFormNextYearFee(0);
+    setFormNextYearTouched(false);
     setDialogOpen(true);
   }
 
@@ -99,7 +104,7 @@ export default function ContractsPage() {
     setForm({
       saleDate: c.saleDate,
       client: c.client,
-      monthlyFee: c.monthlyFee,
+      monthlyFee: contractFeeAt(c, new Date().getFullYear(), new Date().getMonth() + 1),
       durationMonths: c.durationMonths,
       status: c.status,
       revenueType: c.revenueType,
@@ -107,21 +112,66 @@ export default function ContractsPage() {
       upsellCrossSellValue: c.upsellCrossSellValue,
       feeHistory: [...(c.feeHistory ?? [])],
     });
+    setFormNextYearFee(contractFeeAt(c, year + 1, 1));
+    setFormNextYearTouched(false);
     setDialogOpen(true);
   }
 
   function handleSave() {
-    if (!form.client || !form.monthlyFee) return;
+    if (!form.client.trim()) {
+      toast.error("Informe o nome do cliente para salvar o contrato.");
+      return;
+    }
+    if (form.monthlyFee <= 0) {
+      toast.error("Informe um fee mensal maior que zero. Ex.: 20 significa R$ 20,00.");
+      return;
+    }
+    if (!form.saleDate || form.durationMonths <= 0) {
+      toast.error("Confira a data da venda e a duração do contrato.");
+      return;
+    }
+    let durationMonths = form.durationMonths;
+    let feeHistory = [...(form.feeHistory ?? [])];
+    const existingContract = editingId
+      ? data.contracts.find((contract) => contract.id === editingId)
+      : undefined;
+    if (existingContract) {
+      const now = new Date();
+      const effectiveMonth = year === now.getFullYear() ? now.getMonth() + 1 : 1;
+      const previousCurrentFee = contractFeeAt(existingContract, year, effectiveMonth);
+      if (form.monthlyFee !== previousCurrentFee) {
+        const effectiveFrom = `${year}-${String(effectiveMonth).padStart(2, "0")}`;
+        feeHistory = [
+          ...feeHistory.filter((change) => change.effectiveFrom !== effectiveFrom),
+          { effectiveFrom, monthlyFee: form.monthlyFee },
+        ];
+      }
+    }
+    if (formNextYearTouched && formNextYearFee > 0) {
+      feeHistory = [
+        ...feeHistory.filter((change) => change.effectiveFrom !== `${year + 1}-01`),
+        { effectiveFrom: `${year + 1}-01`, monthlyFee: formNextYearFee },
+      ];
+      if (monthsInYear(form.saleDate, durationMonths, year + 1) === 0) {
+        const start = parseLocalDate(form.saleDate);
+        const startIndex = start.getFullYear() * 12 + start.getMonth() + 1;
+        durationMonths = Math.max(durationMonths, (year + 1) * 12 + 12 - startIndex + 1);
+      }
+    }
     const normalizedForm = {
       ...form,
-      feeHistory: [...(form.feeHistory ?? [])]
+      monthlyFee: existingContract?.monthlyFee ?? form.monthlyFee,
+      durationMonths,
+      feeHistory: feeHistory
         .filter((change) => change.effectiveFrom && change.monthlyFee > 0)
         .sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom)),
     };
     if (editingId) {
       updateContract(editingId, normalizedForm);
+      toast.success(`Contrato e MRR atualizados. ${formNextYearTouched ? `Planejamento de ${year + 1} incluído. ` : ""}Sincronizando com a nuvem.`);
     } else {
       addContract(normalizedForm);
+      toast.success("Contrato cadastrado. Sincronizando com a nuvem.");
     }
     setDialogOpen(false);
   }
@@ -153,7 +203,11 @@ export default function ContractsPage() {
   }
 
   function saveNextYearPlan() {
-    if (!planningContract || plannedMonthlyFee <= 0) return;
+    if (!planningContract) return;
+    if (plannedMonthlyFee <= 0) {
+      toast.error("Informe um fee mensal maior que zero.");
+      return;
+    }
     const needsPlannedRenewal =
       monthsInYear(planningContract.saleDate, planningContract.durationMonths, year + 1) === 0;
     updateContract(planningContract.id, {
@@ -162,7 +216,7 @@ export default function ContractsPage() {
         ? { durationMonths: durationThroughNextYear(planningContract) }
         : {}),
     });
-    toast.success(`Fee de ${year + 1} salvo para ${planningContract.client}.`);
+    toast.success(`MRR mensal de ${year + 1} salvo para ${planningContract.client}.`);
     setPlanningContract(null);
   }
 
@@ -190,17 +244,15 @@ export default function ContractsPage() {
         </Button>
       </div>
 
-      {searchParams.get("plan") === "next-year" && (
-        <div className="flex flex-col gap-3 rounded-xl border border-orbi-amber/30 bg-orbi-amber/10 p-4 sm:flex-row sm:items-center">
-          <CalendarRange className="h-5 w-5 shrink-0 text-orbi-amber" />
-          <div>
-            <p className="font-semibold">Planejamento de MRR para {year + 1}</p>
-            <p className="text-sm text-muted-foreground">
-              Toque ou clique no valor “MRR Próx” de cada contrato para informar o fee mensal planejado.
-            </p>
-          </div>
+      <div className="flex flex-col gap-3 rounded-xl border border-orbi-amber/30 bg-orbi-amber/10 p-4 sm:flex-row sm:items-center">
+        <CalendarRange className="h-5 w-5 shrink-0 text-orbi-amber" />
+        <div>
+          <p className="font-semibold">MRR mensal de {year} e {year + 1}</p>
+          <p className="text-sm text-muted-foreground">
+            Use <strong>Editar</strong> para preencher os dois anos juntos ou clique diretamente no valor de {year + 1} na lista.
+          </p>
         </div>
-      )}
+      </div>
 
       {/* Summary cards */}
       <div className="grid gap-4 md:grid-cols-4">
@@ -351,11 +403,11 @@ export default function ContractsPage() {
                   </div>
                   <div className="mt-3 grid grid-cols-3 gap-2">
                     <div className="rounded-lg bg-muted/60 p-2.5">
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Fee</p>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">MRR {year}</p>
                       <p className="mt-0.5 truncate text-sm font-semibold">{currency(c.currentFee)}</p>
                     </div>
                     <div className="rounded-lg bg-muted/60 p-2.5">
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">MRR Ano</p>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Receita {year}</p>
                       <p className="mt-0.5 truncate text-sm font-semibold">{currency(c.mrrYear)}</p>
                     </div>
                     <button
@@ -364,8 +416,8 @@ export default function ContractsPage() {
                       onClick={() => openNextYearPlan(c)}
                       aria-label={`Planejar MRR de ${year + 1} para ${c.client}`}
                     >
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">MRR Próx</p>
-                      <p className="mt-0.5 truncate text-sm font-semibold text-orbi-amber">{currency(c.mrrNextYear)}</p>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">MRR {year + 1}</p>
+                      <p className="mt-0.5 truncate text-sm font-semibold text-orbi-amber">{currency(c.nextYearFee)}</p>
                       <p className="mt-1 text-[9px] text-muted-foreground">Toque para editar</p>
                     </button>
                   </div>
@@ -387,11 +439,11 @@ export default function ContractsPage() {
                   <tr className="border-b">
                     <SortableHeader label="Data" sortKey={"saleDate" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} />
                     <SortableHeader label="Cliente" sortKey={"client" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} />
-                    <SortableHeader label="Fee Vigente" sortKey={"currentFee" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-right" />
+                    <SortableHeader label={`MRR mensal ${year}`} sortKey={"currentFee" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-right" />
                     <SortableHeader label="Duração" sortKey={"durationMonths" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-center" />
                     <SortableHeader label="Meses Ano" sortKey={"mInYear" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-center" />
-                    <SortableHeader label="MRR Ano" sortKey={"mrrYear" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-right" />
-                    <SortableHeader label="MRR Prox" sortKey={"mrrNextYear" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-right" />
+                    <SortableHeader label={`Receita ${year}`} sortKey={"mrrYear" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-right" />
+                    <SortableHeader label={`MRR mensal ${year + 1} · editar`} sortKey={"nextYearFee" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-right" />
                     <SortableHeader label="Status" sortKey={"status" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-center" />
                     <SortableHeader label="Tipo" sortKey={"revenueType" as keyof ContractRow} currentKey={sortKey} direction={sortDir} onSort={toggleSort} className="text-center" />
                     <th className="h-10 px-4 text-right text-sm font-medium text-muted-foreground">Ações</th>
@@ -420,7 +472,7 @@ export default function ContractsPage() {
                           onClick={() => openNextYearPlan(c)}
                           aria-label={`Planejar MRR de ${year + 1} para ${c.client}`}
                         >
-                          {currency(c.mrrNextYear)}
+                          {currency(c.nextYearFee)}
                           <Pencil className="h-3 w-3" />
                         </button>
                       </TableCell>
@@ -453,7 +505,7 @@ export default function ContractsPage() {
       <Dialog open={Boolean(planningContract)} onOpenChange={(open) => !open && setPlanningContract(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Planejar MRR de {year + 1}</DialogTitle>
+            <DialogTitle>Editar MRR mensal de {year + 1}</DialogTitle>
           </DialogHeader>
           {planningContract && (
             <div className="space-y-4 py-2">
@@ -473,17 +525,12 @@ export default function ContractsPage() {
                 </div>
               )}
               <div className="space-y-2">
-                <Label htmlFor="planned-next-year-fee">Fee mensal planejado (R$)</Label>
-                <Input
-                  id="planned-next-year-fee"
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  inputMode="decimal"
-                  autoFocus
-                  value={plannedMonthlyFee || ""}
-                  onChange={(event) => setPlannedMonthlyFee(parseFloat(event.target.value) || 0)}
-                />
+                <Label htmlFor="planned-next-year-fee">MRR mensal planejado para {year + 1}</Label>
+                    <CurrencyInput
+                      id="planned-next-year-fee"
+                      value={plannedMonthlyFee}
+                      onValueChange={setPlannedMonthlyFee}
+                    />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg border border-border/60 p-3">
@@ -542,15 +589,43 @@ export default function ContractsPage() {
                 <Input value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value })} placeholder="Nome do cliente" />
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Fee Mensal (R$)</Label>
-                <Input type="number" step="0.01" value={form.monthlyFee || ""} onChange={(e) => setForm({ ...form, monthlyFee: parseFloat(e.target.value) || 0 })} />
+            <div className="rounded-xl border border-orbi-cyan/25 bg-orbi-cyan/5 p-4">
+              <div className="mb-4">
+                <p className="font-semibold">MRR mensal do contrato</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Preencha somente o valor mensal. Ex.: 2.500 significa R$ 2.500,00 por mês.
+                </p>
               </div>
-              <div className="space-y-2">
-                <Label>Duração (meses)</Label>
-                <Input type="number" value={form.durationMonths || ""} onChange={(e) => setForm({ ...form, durationMonths: parseInt(e.target.value) || 0 })} />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>MRR mensal atual — {year}</Label>
+                  <CurrencyInput
+                    value={form.monthlyFee}
+                    onValueChange={(monthlyFee) => setForm({ ...form, monthlyFee })}
+                    hint={`Valor vigente no ano atual (${year}).`}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>MRR mensal do próximo ano — {year + 1}</Label>
+                  <CurrencyInput
+                    value={formNextYearFee}
+                    onValueChange={(value) => {
+                      setFormNextYearFee(value);
+                      setFormNextYearTouched(true);
+                    }}
+                    hint={`Planejamento para ${year + 1}. Não altera o valor de ${year}.`}
+                  />
+                </div>
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Duração (meses)</Label>
+              <Input type="number" value={form.durationMonths || ""} onChange={(e) => setForm({ ...form, durationMonths: parseInt(e.target.value) || 0 })} />
+              {formNextYearTouched && formNextYearFee > 0 && monthsInYear(form.saleDate, form.durationMonths, year + 1) === 0 && (
+                <p className="text-xs text-orbi-amber">
+                  Ao salvar, o planejamento será estendido até dezembro de {year + 1}.
+                </p>
+              )}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -580,11 +655,11 @@ export default function ContractsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Valor Onboarding (R$)</Label>
-                <Input type="number" step="0.01" value={form.onboardingValue || ""} onChange={(e) => setForm({ ...form, onboardingValue: parseFloat(e.target.value) || 0 })} />
+                <CurrencyInput value={form.onboardingValue} onValueChange={(onboardingValue) => setForm({ ...form, onboardingValue })} hint={false} />
               </div>
               <div className="space-y-2">
                 <Label>Valor Upsell/Cross-sell (R$)</Label>
-                <Input type="number" step="0.01" value={form.upsellCrossSellValue || ""} onChange={(e) => setForm({ ...form, upsellCrossSellValue: parseFloat(e.target.value) || 0 })} />
+                <CurrencyInput value={form.upsellCrossSellValue} onValueChange={(upsellCrossSellValue) => setForm({ ...form, upsellCrossSellValue })} hint={false} />
               </div>
             </div>
             <div className="space-y-3 rounded-lg border border-border/60 p-3">
@@ -634,19 +709,17 @@ export default function ContractsPage() {
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs">Novo fee (R$)</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={change.monthlyFee || ""}
-                          onChange={(event) => {
+                        <CurrencyInput
+                          value={change.monthlyFee}
+                          onValueChange={(monthlyFee) => {
                             const feeHistory = [...(form.feeHistory ?? [])];
                             feeHistory[index] = {
                               ...change,
-                              monthlyFee: parseFloat(event.target.value) || 0,
+                              monthlyFee,
                             };
                             setForm({ ...form, feeHistory });
                           }}
+                          hint={false}
                         />
                       </div>
                       <Button

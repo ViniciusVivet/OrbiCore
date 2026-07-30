@@ -12,6 +12,7 @@ import { currency, percent, shortMonthName, monthName } from "@/lib/format";
 import { mrrInMonth, mrrInQuarter, mrrEnteringYear, activeContractsCount, weightedPipelineRevenue, saleProfitAndMargin } from "@/lib/calculations";
 import { toast } from "sonner";
 import type { GoalPlan } from "@/lib/types";
+import { CurrencyInput } from "@/components/currency-input";
 
 const repeat = (value: number) => Array.from({ length: 12 }, () => value);
 
@@ -181,11 +182,11 @@ export default function GoalsPage() {
               {Array.from({ length: 12 }, (_, index) => (
                 <div key={index} className="grid grid-cols-[80px_repeat(5,1fr)] items-center gap-2">
                   <span className="text-sm font-medium">{shortMonthName(index + 1)}</span>
-                  <Input type="number" min="0" step="0.01" value={monthlyRevenueGoals[index] || ""} onChange={(e) => updateMonth(setMonthlyRevenueGoals, index, Number(e.target.value) || 0)} />
+                  <CurrencyInput value={monthlyRevenueGoals[index]} onValueChange={(value) => updateMonth(setMonthlyRevenueGoals, index, value)} hint={false} />
                   <Input type="number" min="0" value={monthlyMeetingGoals[index] || ""} onChange={(e) => updateMonth(setMonthlyMeetingGoals, index, Number(e.target.value) || 0)} />
                   <Input type="number" min="0" max="100" value={Math.round((monthlyCloseRateTargets[index] ?? 0) * 100) || ""} onChange={(e) => updateMonth(setMonthlyCloseRateTargets, index, (Number(e.target.value) || 0) / 100)} />
                   <Input type="number" min="0" value={monthlyNewContractGoals[index] || ""} onChange={(e) => updateMonth(setMonthlyNewContractGoals, index, Number(e.target.value) || 0)} />
-                  <Input type="number" min="0" step="0.01" value={monthlySalesRevenueGoals[index] || ""} onChange={(e) => updateMonth(setMonthlySalesRevenueGoals, index, Number(e.target.value) || 0)} />
+                  <CurrencyInput value={monthlySalesRevenueGoals[index]} onValueChange={(value) => updateMonth(setMonthlySalesRevenueGoals, index, value)} hint={false} />
                 </div>
               ))}
             </div>
@@ -222,12 +223,9 @@ export default function GoalsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-lg bg-muted/50 border border-border/50">
               <div className="space-y-2">
                 <Label className="text-xs">Meta Anual (R$)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={yearlyGoal || ""}
-                  onChange={(e) => {
-                    const total = parseFloat(e.target.value) || 0;
+                <CurrencyInput
+                  value={yearlyGoal}
+                  onValueChange={(total) => {
                     setYearlyGoal(total);
                     setMonthlyRevenueGoals(repeat(total / 12));
                   }}
@@ -465,11 +463,12 @@ export default function GoalsPage() {
             <div className="p-4 rounded-lg bg-muted/50 border border-border/50">
               <div className="space-y-2 max-w-xs">
                 <Label className="text-xs">Receita mensal de vendas (R$)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={salesRevenueMonthly || ""}
-                  onChange={(e) => setSalesRevenueMonthly(parseFloat(e.target.value) || 0)}
+                <CurrencyInput
+                  value={salesRevenueMonthly}
+                  onValueChange={(value) => {
+                    setSalesRevenueMonthly(value);
+                    updateMonth(setMonthlySalesRevenueGoals, monthIndex, value);
+                  }}
                 />
               </div>
             </div>

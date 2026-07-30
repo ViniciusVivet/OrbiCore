@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { formatFileSize, optimizeImage } from "@/lib/image-optimizer";
 import { MAX_PRODUCT_IMAGES, productImageUrl, removeProductImages, uploadProductImage } from "@/lib/product-images";
 import { CustomizableCards } from "@/components/customizable-cards";
+import { CurrencyInput } from "@/components/currency-input";
 
 type FormData = Omit<Product, "id" | "createdAt">;
 type MovementForm = Omit<StockMovement, "id" | "createdAt"> & {
@@ -107,9 +108,17 @@ export default function ProductsPage() {
   }
 
   function handleSave() {
-    if (!form.name) return;
-    if (editingId) updateProduct(editingId, form);
-    else addProduct(form);
+    if (!form.name.trim()) {
+      toast.error("Informe o nome do produto para salvar.");
+      return;
+    }
+    if (editingId) {
+      updateProduct(editingId, form);
+      toast.success("Produto atualizado. Sincronizando com a nuvem.");
+    } else {
+      addProduct(form);
+      toast.success("Produto cadastrado. Sincronizando com a nuvem.");
+    }
     setDialogOpen(false);
   }
 
@@ -136,7 +145,14 @@ export default function ProductsPage() {
   }
 
   function handleMovement() {
-    if (!movement.productId || movement.quantity === 0) return;
+    if (!movement.productId) {
+      toast.error("Selecione um produto.");
+      return;
+    }
+    if (movement.quantity <= 0) {
+      toast.error("Informe uma quantidade maior que zero.");
+      return;
+    }
     const product = products.find((item) => item.id === movement.productId);
     const movementsWithoutCurrent = editingMovementId
       ? stockMovements.filter((item) => item.id !== editingMovementId)
@@ -431,11 +447,11 @@ export default function ProductsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Custo Unit. (R$)</Label>
-                <Input type="number" step="0.01" value={form.costPrice || ""} onChange={(e) => setForm({ ...form, costPrice: parseFloat(e.target.value) || 0 })} />
+                <CurrencyInput value={form.costPrice} onValueChange={(costPrice) => setForm({ ...form, costPrice })} />
               </div>
               <div className="space-y-2">
                 <Label>Preço Venda (R$)</Label>
-                <Input type="number" step="0.01" value={form.salePrice || ""} onChange={(e) => setForm({ ...form, salePrice: parseFloat(e.target.value) || 0 })} />
+                <CurrencyInput value={form.salePrice} onValueChange={(salePrice) => setForm({ ...form, salePrice })} hint={false} />
               </div>
             </div>
           </div>
@@ -482,7 +498,7 @@ export default function ProductsPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2"><Label>Quantidade</Label><Input type="number" min="1" value={movement.quantity} onChange={(e) => setMovement({ ...movement, quantity: Number(e.target.value) })} /></div>
-              <div className="space-y-2"><Label>Custo unitário</Label><Input type="number" min="0" step="0.01" value={movement.unitCost || ""} onChange={(e) => setMovement({ ...movement, unitCost: Number(e.target.value) })} /></div>
+              <div className="space-y-2"><Label>Custo unitário</Label><CurrencyInput value={movement.unitCost} onValueChange={(unitCost) => setMovement({ ...movement, unitCost })} hint={false} /></div>
             </div>
             <div className="space-y-2"><Label>Observação</Label><Input value={movement.note} onChange={(e) => setMovement({ ...movement, note: e.target.value })} placeholder="Ex: compra no fornecedor" /></div>
           </div>

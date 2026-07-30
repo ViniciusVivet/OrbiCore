@@ -19,6 +19,8 @@ import { useSortable } from "@/hooks/use-sortable";
 import { SortableHeader } from "@/components/sortable-header";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { chartTokens, chartTooltipStyle } from "@/lib/chart-theme";
+import { CurrencyInput } from "@/components/currency-input";
+import { toast } from "sonner";
 
 const COLORS = {
   cyan: chartTokens.cyan,
@@ -123,11 +125,20 @@ export default function MeetingsPage() {
   }
 
   function handleSave() {
-    if (!form.clientLead) return;
+    if (!form.clientLead.trim()) {
+      toast.error("Informe o nome do cliente ou lead para salvar a reunião.");
+      return;
+    }
+    if (!form.date) {
+      toast.error("Informe a data da reunião.");
+      return;
+    }
     if (editingId) {
       updateMeeting(editingId, form);
+      toast.success("Reunião atualizada. Sincronizando com a nuvem.");
     } else {
       addMeeting(form);
+      toast.success("Reunião cadastrada. Sincronizando com a nuvem.");
     }
     setDialogOpen(false);
   }
@@ -445,7 +456,7 @@ export default function MeetingsPage() {
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>MRR Previsto (R$)</Label>
-                <Input type="number" step="0.01" value={form.expectedMRR || ""} onChange={(e) => setForm({ ...form, expectedMRR: parseFloat(e.target.value) || 0 })} />
+                <CurrencyInput value={form.expectedMRR} onValueChange={(expectedMRR) => setForm({ ...form, expectedMRR })} />
               </div>
               <div className="space-y-2">
                 <Label>Probabilidade (%)</Label>
