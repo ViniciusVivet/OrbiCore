@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Plus, FileText, Pencil, Trash2, Shield, TrendingUp, CalendarRange } from "lucide-react";
 import { useAppStore } from "@/components/store-provider";
 import { currency, dateFormat, percent } from "@/lib/format";
-import { monthsInYear, clientConcentration, mrrByRevenueType, churnRisk, contractFeeAt, contractRevenueInYear } from "@/lib/calculations";
+import { monthsInYear, clientConcentration, mrrByRevenueType, churnRisk, contractFeeAt, contractRevenueInYear, parseLocalDate } from "@/lib/calculations";
 import { Contract, ContractStatus, RevenueType } from "@/lib/types";
 import { useSortable } from "@/hooks/use-sortable";
 import { SortableHeader } from "@/components/sortable-header";
@@ -139,10 +139,28 @@ export default function ContractsPage() {
     setPlannedMonthlyFee(contractFeeAt(contract, year + 1, 1));
   }
 
+  function durationThroughNextYear(contract: Contract) {
+    const start = parseLocalDate(contract.saleDate);
+    const startIndex = start.getFullYear() * 12 + start.getMonth() + 1;
+    const nextYearEndIndex = (year + 1) * 12 + 12;
+    return Math.max(contract.durationMonths, nextYearEndIndex - startIndex + 1);
+  }
+
+  function planningDuration(contract: Contract) {
+    return monthsInYear(contract.saleDate, contract.durationMonths, year + 1) > 0
+      ? contract.durationMonths
+      : durationThroughNextYear(contract);
+  }
+
   function saveNextYearPlan() {
     if (!planningContract || plannedMonthlyFee <= 0) return;
+    const needsPlannedRenewal =
+      monthsInYear(planningContract.saleDate, planningContract.durationMonths, year + 1) === 0;
     updateContract(planningContract.id, {
       feeHistory: historyWithNextYearFee(planningContract, plannedMonthlyFee),
+      ...(needsPlannedRenewal
+        ? { durationMonths: durationThroughNextYear(planningContract) }
+        : {}),
     });
     toast.success(`Fee de ${year + 1} salvo para ${planningContract.client}.`);
     setPlanningContract(null);
@@ -446,69 +464,61 @@ export default function ContractsPage() {
                 </p>
               </div>
 
-              {monthsInYear(planningContract.saleDate, planningContract.durationMonths, year + 1) > 0 ? (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="planned-next-year-fee">Fee mensal planejado (R$)</Label>
-                    <Input
-                      id="planned-next-year-fee"
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      inputMode="decimal"
-                      autoFocus
-                      value={plannedMonthlyFee || ""}
-                      onChange={(event) => setPlannedMonthlyFee(parseFloat(event.target.value) || 0)}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-lg border border-border/60 p-3">
-                      <p className="text-xs text-muted-foreground">Meses ativos em {year + 1}</p>
-                      <p className="mt-1 text-lg font-semibold">
-                        {monthsInYear(planningContract.saleDate, planningContract.durationMonths, year + 1)}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-orbi-amber/30 bg-orbi-amber/10 p-3">
-                      <p className="text-xs text-muted-foreground">Projeção anual</p>
-                      <p className="mt-1 text-lg font-semibold text-orbi-amber">
-                        {currency(contractRevenueInYear({
-                          ...planningContract,
-                          feeHistory: plannedMonthlyFee > 0
-                            ? historyWithNextYearFee(planningContract, plannedMonthlyFee)
-                            : planningContract.feeHistory,
-                        }, year + 1))}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    O valor é salvo como reajuste futuro e não altera o fee vigente deste ano.
-                  </p>
-                </>
-              ) : (
+              {monthsInYear(planningContract.saleDate, planningContract.durationMonths, year + 1) === 0 && (
                 <div className="rounded-lg border border-orbi-rose/30 bg-orbi-rose/10 p-4">
-                  <p className="font-medium">Este contrato termina antes de {year + 1}.</p>
+                  <p className="font-medium">Renovação planejada</p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Para projetar receita, primeiro confirme a renovação aumentando a duração do contrato.
+                    Este contrato termina antes de {year + 1}. Ao salvar, a projeção será renovada até dezembro de {year + 1}.
                   </p>
                 </div>
               )}
+              <div className="space-y-2">
+                <Label htmlFor="planned-next-year-fee">Fee mensal planejado (R$)</Label>
+                <Input
+                  id="planned-next-year-fee"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  inputMode="decimal"
+                  autoFocus
+                  value={plannedMonthlyFee || ""}
+                  onChange={(event) => setPlannedMonthlyFee(parseFloat(event.target.value) || 0)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border border-border/60 p-3">
+                  <p className="text-xs text-muted-foreground">Meses projetados em {year + 1}</p>
+                  <p className="mt-1 text-lg font-semibold">
+                    {monthsInYear(
+                      planningContract.saleDate,
+                      planningDuration(planningContract),
+                      year + 1
+                    )}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-orbi-amber/30 bg-orbi-amber/10 p-3">
+                  <p className="text-xs text-muted-foreground">Projeção anual</p>
+                  <p className="mt-1 text-lg font-semibold text-orbi-amber">
+                    {currency(contractRevenueInYear({
+                      ...planningContract,
+                      durationMonths: planningDuration(planningContract),
+                      feeHistory: plannedMonthlyFee > 0
+                        ? historyWithNextYearFee(planningContract, plannedMonthlyFee)
+                        : planningContract.feeHistory,
+                    }, year + 1))}
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                O valor é salvo como reajuste futuro e não altera o fee vigente deste ano.
+              </p>
             </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setPlanningContract(null)}>Cancelar</Button>
-            {planningContract && monthsInYear(planningContract.saleDate, planningContract.durationMonths, year + 1) > 0 ? (
+            {planningContract ? (
               <Button onClick={saveNextYearPlan} disabled={plannedMonthlyFee <= 0}>
                 Salvar planejamento
-              </Button>
-            ) : planningContract ? (
-              <Button
-                onClick={() => {
-                  const contract = planningContract;
-                  setPlanningContract(null);
-                  openEdit(contract);
-                }}
-              >
-                Editar duração
               </Button>
             ) : null}
           </DialogFooter>
