@@ -233,6 +233,7 @@ export default function ContractsPage() {
   // Insights
   const concentration = clientConcentration(data.contracts);
   const revenueByType = mrrByRevenueType(data.contracts);
+  const churnEnabled = data.profile.enabledFeatures?.includes("churn-risk-90d") ?? false;
   const churn = churnRisk(data.contracts, year, 3);
 
   return (
@@ -261,7 +262,7 @@ export default function ContractsPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className={`grid gap-4 ${churnEnabled ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
         <Card className="border-border/50">
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">MRR Ativo</p>
@@ -284,15 +285,17 @@ export default function ContractsPage() {
             </p>
           </CardContent>
         </Card>
-        <Card className={`border-border/50 ${churn.count > 0 ? "border-orbi-rose/30" : ""}`}>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <Shield className="h-4 w-4 text-orbi-rose" />
-              <p className="text-sm text-muted-foreground">Risco Churn (90d)</p>
-            </div>
-            <p className="text-2xl font-bold">{churn.count > 0 ? `${churn.count} (${percent(churn.percentOfTotal)})` : "Seguro"}</p>
-          </CardContent>
-        </Card>
+        {churnEnabled && (
+          <Card className={`border-border/50 ${churn.count > 0 ? "border-orbi-rose/30" : ""}`}>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2">
+                <Shield className="h-4 w-4 text-orbi-rose" />
+                <p className="text-sm text-muted-foreground">Risco Churn (90d)</p>
+              </div>
+              <p className="text-2xl font-bold">{churn.count > 0 ? `${churn.count} (${percent(churn.percentOfTotal)})` : "Seguro"}</p>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Charts */}
