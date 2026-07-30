@@ -241,7 +241,7 @@ export default function GoalsPage() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
               <MetricBox label="Meta Anual" value={currency(yearlyGoal)} />
               <MetricBox label="Meta Mensal" value={currency(monthlyGoal)} />
               <MetricBox label="Meta Trimestral" value={currency(quarterlyGoal)} />

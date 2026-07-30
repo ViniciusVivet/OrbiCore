@@ -238,6 +238,12 @@ export default function ProductsPage() {
     }
   }
 
+  function handleDeleteMovement(item: StockMovement) {
+    if (!window.confirm("Excluir esta movimentação? O saldo do estoque será recalculado.")) return;
+    deleteStockMovement(item.id);
+    toast.success("Movimentação excluída e estoque recalculado.");
+  }
+
   if (!loaded) return null;
 
   return (
@@ -398,7 +404,7 @@ export default function ProductsPage() {
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Produto" : "Novo Produto"}</DialogTitle>
           </DialogHeader>
@@ -417,7 +423,7 @@ export default function ProductsPage() {
               <Label>Fornecedor</Label>
               <Input value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} placeholder="Nome do fornecedor" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Código / SKU</Label>
                 <Input value={form.sku ?? ""} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="Ex: CAM-001" />
@@ -463,7 +469,7 @@ export default function ProductsPage() {
       </Dialog>
 
       <Dialog open={movementOpen} onOpenChange={setMovementOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-md">
           <DialogHeader><DialogTitle>{editingMovementId ? "Editar movimentação" : "Movimentar estoque"}</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="space-y-2">
@@ -473,7 +479,7 @@ export default function ProductsPage() {
                 <SelectContent>{products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-2"><Label>Tipo</Label>
                 <Select value={movement.type} onValueChange={(value) => {
                   const type = (value ?? "Entrada") as StockMovementType;
@@ -496,7 +502,7 @@ export default function ProductsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-2"><Label>Quantidade</Label><Input type="number" min="1" value={movement.quantity} onChange={(e) => setMovement({ ...movement, quantity: Number(e.target.value) })} /></div>
               <div className="space-y-2"><Label>Custo unitário</Label><CurrencyInput value={movement.unitCost} onValueChange={(unitCost) => setMovement({ ...movement, unitCost })} hint={false} /></div>
             </div>
@@ -507,7 +513,7 @@ export default function ProductsPage() {
       </Dialog>
 
       <Dialog open={Boolean(selectedProduct)} onOpenChange={(open) => !open && setDetailId(null)}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
           {selectedProduct && (() => {
             const stock = productStock(selectedProduct, sales, stockMovements);
             const sold = sales.filter((sale) => sale.productId === selectedProduct.id).reduce((sum, sale) => sum + sale.quantity, 0);
@@ -581,7 +587,7 @@ export default function ProductsPage() {
                 const product = products.find((p) => p.id === item.productId);
                 return <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/50 p-3">
                   <div className="min-w-0"><p className="truncate text-sm font-medium">{product?.name ?? "Produto removido"}</p><p className="truncate text-xs text-muted-foreground">{item.date} · {item.reason || item.note || item.type}</p></div>
-                  <div className="flex shrink-0 items-center gap-2"><span className={`font-semibold ${item.type === "Entrada" || (item.type === "Ajuste" && item.quantity > 0) ? "text-orbi-emerald" : "text-orbi-rose"}`}>{item.type === "Entrada" ? "+" : item.type === "Baixa" ? "−" : item.quantity > 0 ? "+" : ""}{item.quantity}</span><Button variant="ghost" size="icon-sm" aria-label="Editar movimentação" onClick={() => openMovementEdit(item)}><Pencil className="h-3.5 w-3.5" /></Button><Button variant="ghost" size="icon-sm" aria-label="Excluir movimentação" onClick={() => deleteStockMovement(item.id)}><Trash2 className="h-3.5 w-3.5" /></Button></div>
+                  <div className="flex shrink-0 items-center gap-2"><span className={`font-semibold ${item.type === "Entrada" || (item.type === "Ajuste" && item.quantity > 0) ? "text-orbi-emerald" : "text-orbi-rose"}`}>{item.type === "Entrada" ? "+" : item.type === "Baixa" ? "−" : item.quantity > 0 ? "+" : ""}{item.quantity}</span><Button variant="ghost" size="icon-sm" aria-label="Editar movimentação" onClick={() => openMovementEdit(item)}><Pencil className="h-3.5 w-3.5" /></Button><Button variant="ghost" size="icon-sm" aria-label="Excluir movimentação" onClick={() => handleDeleteMovement(item)}><Trash2 className="h-3.5 w-3.5" /></Button></div>
                 </div>;
               })}
             </div>

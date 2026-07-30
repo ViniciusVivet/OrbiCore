@@ -143,14 +143,20 @@ export default function MeetingsPage() {
     setDialogOpen(false);
   }
 
+  function handleDelete(meeting: Meeting) {
+    if (!window.confirm(`Excluir a reunião com ${meeting.clientLead}? Esta ação não pode ser desfeita.`)) return;
+    deleteMeeting(meeting.id);
+    toast.success("Reunião excluída.");
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Reuniões</h2>
           <p className="text-muted-foreground">Controle reuniões, propostas e pipeline de vendas</p>
         </div>
-        <Button onClick={openNew} className="gap-2">
+        <Button onClick={openNew} className="w-full gap-2 sm:w-auto">
           <Plus className="h-4 w-4" />
           Nova Reunião
         </Button>
@@ -340,7 +346,7 @@ export default function MeetingsPage() {
                       <Button variant="outline" size="sm" className="min-h-10 gap-2" onClick={() => openEdit(m)}>
                         <Pencil className="h-4 w-4" />Editar
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-10 w-10" aria-label={`Excluir reunião com ${m.clientLead}`} onClick={() => deleteMeeting(m.id)}>
+                      <Button variant="ghost" size="icon" className="h-10 w-10" aria-label={`Excluir reunião com ${m.clientLead}`} onClick={() => handleDelete(m)}>
                         <Trash2 className="h-4 w-4 text-orbi-rose" />
                       </Button>
                     </div>
@@ -382,7 +388,7 @@ export default function MeetingsPage() {
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           <Button variant="ghost" size="icon" onClick={() => openEdit(m)}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => deleteMeeting(m.id)}><Trash2 className="h-4 w-4 text-orbi-rose" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(m)}><Trash2 className="h-4 w-4 text-orbi-rose" /></Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -397,12 +403,12 @@ export default function MeetingsPage() {
 
       {/* Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Reunião" : "Nova Reunião"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Data</Label>
                 <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
@@ -412,7 +418,7 @@ export default function MeetingsPage() {
                 <Input value={form.clientLead} onChange={(e) => setForm({ ...form, clientLead: e.target.value })} placeholder="Nome" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Responsável</Label>
                 <Input value={form.responsible} onChange={(e) => setForm({ ...form, responsible: e.target.value })} placeholder="Quem" />
@@ -429,7 +435,7 @@ export default function MeetingsPage() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Tipo</Label>
                 <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as MeetingType })}>
@@ -453,7 +459,7 @@ export default function MeetingsPage() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label>MRR Previsto (R$)</Label>
                 <CurrencyInput value={form.expectedMRR} onValueChange={(expectedMRR) => setForm({ ...form, expectedMRR })} />

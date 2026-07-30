@@ -220,6 +220,12 @@ export default function ContractsPage() {
     setPlanningContract(null);
   }
 
+  function handleDelete(contract: Contract) {
+    if (!window.confirm(`Excluir o contrato de ${contract.client}? Esta ação não pode ser desfeita.`)) return;
+    deleteContract(contract.id);
+    toast.success("Contrato excluído.");
+  }
+
   const totalMRR = data.contracts
     .filter((c) => c.status === "Ativo")
     .reduce((s, c) => s + contractFeeAt(c, new Date().getFullYear(), new Date().getMonth() + 1), 0);
@@ -231,14 +237,14 @@ export default function ContractsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Contratos</h2>
           <p className="text-muted-foreground">
             Gerencie seus contratos e receita recorrente
           </p>
         </div>
-        <Button onClick={openNew} className="gap-2">
+        <Button onClick={openNew} className="w-full gap-2 sm:w-auto">
           <Plus className="h-4 w-4" />
           Novo Contrato
         </Button>
@@ -401,7 +407,7 @@ export default function ContractsPage() {
                     </div>
                     <Badge className={statusColors[c.status]}>{c.status}</Badge>
                   </div>
-                  <div className="mt-3 grid grid-cols-3 gap-2">
+                  <div className="mt-3 grid grid-cols-2 gap-2">
                     <div className="rounded-lg bg-muted/60 p-2.5">
                       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">MRR {year}</p>
                       <p className="mt-0.5 truncate text-sm font-semibold">{currency(c.currentFee)}</p>
@@ -412,7 +418,7 @@ export default function ContractsPage() {
                     </div>
                     <button
                       type="button"
-                      className="rounded-lg border border-orbi-amber/20 bg-orbi-amber/10 p-2.5 text-left transition-colors hover:border-orbi-amber/50"
+                      className="col-span-2 rounded-lg border border-orbi-amber/20 bg-orbi-amber/10 p-2.5 text-left transition-colors hover:border-orbi-amber/50"
                       onClick={() => openNextYearPlan(c)}
                       aria-label={`Planejar MRR de ${year + 1} para ${c.client}`}
                     >
@@ -425,7 +431,7 @@ export default function ContractsPage() {
                     <Button variant="outline" size="sm" className="min-h-10 gap-2" onClick={() => openEdit(c)}>
                       <Pencil className="h-4 w-4" />Editar
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-10 w-10" aria-label={`Excluir contrato de ${c.client}`} onClick={() => deleteContract(c.id)}>
+                    <Button variant="ghost" size="icon" className="h-10 w-10" aria-label={`Excluir contrato de ${c.client}`} onClick={() => handleDelete(c)}>
                       <Trash2 className="h-4 w-4 text-orbi-rose" />
                     </Button>
                   </div>
@@ -487,7 +493,7 @@ export default function ContractsPage() {
                           <Button variant="ghost" size="icon" onClick={() => openEdit(c)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => deleteContract(c.id)}>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(c)}>
                             <Trash2 className="h-4 w-4 text-orbi-rose" />
                           </Button>
                         </div>
@@ -694,7 +700,7 @@ export default function ContractsPage() {
               ) : (
                 <div className="space-y-2">
                   {(form.feeHistory ?? []).map((change, index) => (
-                    <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-2" key={index}>
+                    <div className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[1fr_1fr_auto]" key={index}>
                       <div className="space-y-1">
                         <Label className="text-xs">Vigência</Label>
                         <Input

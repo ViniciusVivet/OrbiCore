@@ -94,6 +94,12 @@ export default function SalesPage() {
     setDialogOpen(false);
   }
 
+  function handleDelete(sale: Sale, productName: string) {
+    if (!window.confirm(`Excluir a venda de ${productName}? O estoque será recalculado.`)) return;
+    deleteSale(sale.id);
+    toast.success("Venda excluída e estoque recalculado.");
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -190,7 +196,7 @@ export default function SalesPage() {
                   if (!product) return null;
                   const { revenue, profit, margin } = saleProfitAndMargin(sale, product);
                   return <article key={sale.id} className="rounded-xl border border-border/60 p-4">
-                    <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate font-semibold">{product.name}</h3><p className="text-xs text-muted-foreground">{dateFormat(sale.date)} · {sale.quantity} un.</p></div><div className="flex"><Button variant="ghost" size="icon" className="h-11 w-11" aria-label={`Editar venda de ${product.name}`} onClick={() => openEdit(sale)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-11 w-11" aria-label={`Excluir venda de ${product.name}`} onClick={() => deleteSale(sale.id)}><Trash2 className="h-4 w-4 text-orbi-rose" /></Button></div></div>
+                    <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate font-semibold">{product.name}</h3><p className="text-xs text-muted-foreground">{dateFormat(sale.date)} · {sale.quantity} un.</p></div><div className="flex"><Button variant="ghost" size="icon" className="h-11 w-11" aria-label={`Editar venda de ${product.name}`} onClick={() => openEdit(sale)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-11 w-11" aria-label={`Excluir venda de ${product.name}`} onClick={() => handleDelete(sale, product.name)}><Trash2 className="h-4 w-4 text-orbi-rose" /></Button></div></div>
                     <div className="mt-3 grid grid-cols-3 gap-2"><SaleMetric label="Receita" value={currency(revenue)} /><SaleMetric label="Lucro" value={currency(profit)} positive /><SaleMetric label="Margem" value={percent(margin, 0)} /></div>
                   </article>;
                 })}
@@ -228,7 +234,7 @@ export default function SalesPage() {
                             <Button variant="ghost" size="icon" onClick={() => openEdit(sale)}>
                               <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => deleteSale(sale.id)}>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(sale, product.name)}>
                               <Trash2 className="h-4 w-4 text-orbi-rose" />
                             </Button>
                           </TableCell>
@@ -245,7 +251,7 @@ export default function SalesPage() {
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar venda" : "Nova Venda"}</DialogTitle>
           </DialogHeader>
@@ -272,7 +278,7 @@ export default function SalesPage() {
               <Label>Quantidade</Label>
               <Input type="number" min="1" value={form.quantity || ""} onChange={(e) => setForm({ ...form, quantity: parseInt(e.target.value) || 0 })} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Custo unitário</Label>
                 <CurrencyInput value={form.unitCostPrice ?? 0} onValueChange={(unitCostPrice) => setForm({ ...form, unitCostPrice })} />
