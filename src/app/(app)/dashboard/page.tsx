@@ -306,10 +306,10 @@ export default function DashboardPage() {
         </DashboardBlock>
         <DashboardBlock id="next-year-mrr">
         <ClickableStatCard
-          href="/contracts"
+          href="/contracts?plan=next-year"
           title="MRR Próximo Ano"
           value={currency(mrrNext)}
-          description="Receita que transborda para o próximo ano"
+          description="Clique para planejar os fees do próximo ano"
           icon={<ArrowDownRight className="h-4 w-4 text-orbi-amber" />}
           bg="bg-orbi-amber/10"
         />

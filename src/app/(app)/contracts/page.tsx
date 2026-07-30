@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { Plus, FileText, Pencil, Trash2, Shield, TrendingUp } from "lucide-react";
+import { Plus, FileText, Pencil, Trash2, Shield, TrendingUp, CalendarRange } from "lucide-react";
 import { useAppStore } from "@/components/store-provider";
 import { currency, dateFormat, percent } from "@/lib/format";
 import { monthsInYear, clientConcentration, mrrByRevenueType, churnRisk, contractFeeAt, contractRevenueInYear } from "@/lib/calculations";
@@ -18,6 +19,7 @@ import { useSortable } from "@/hooks/use-sortable";
 import { SortableHeader } from "@/components/sortable-header";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, PieChart, Pie, CartesianGrid } from "recharts";
 import { chartTokens, chartSeries, chartTooltipStyle } from "@/lib/chart-theme";
+import { toast } from "sonner";
 
 const COLORS = {
   cyan: chartTokens.cyan,
@@ -48,7 +50,12 @@ const emptyForm: FormData = {
   feeHistory: [],
 };
 
-type ContractRow = Contract & { currentFee: number; mrrYear: number; mrrNextYear: number; mInYear: number };
+type ContractRow = Contract & {
+  currentFee: number;
+  mrrYear: number;
+  mrrNextYear: number;
+  mInYear: number;
+};
 
 export default function ContractsPage() {
   const { data, loaded, addContract, updateContract, deleteContract } = useAppStore();
@@ -56,6 +63,9 @@ export default function ContractsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormData>(emptyForm);
   const [statusFilter, setStatusFilter] = useState<string>("Todos");
+  const [planningContract, setPlanningContract] = useState<Contract | null>(null);
+  const [plannedMonthlyFee, setPlannedMonthlyFee] = useState(0);
+  const searchParams = useSearchParams();
 
   const year = loaded ? data.profile.currentYear : new Date().getFullYear();
   const filtered = loaded
@@ -116,6 +126,28 @@ export default function ContractsPage() {
     setDialogOpen(false);
   }
 
+  function historyWithNextYearFee(contract: Contract, monthlyFee: number) {
+    const effectiveFrom = `${year + 1}-01`;
+    return [
+      ...(contract.feeHistory ?? []).filter((change) => change.effectiveFrom !== effectiveFrom),
+      { effectiveFrom, monthlyFee },
+    ].sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom));
+  }
+
+  function openNextYearPlan(contract: Contract) {
+    setPlanningContract(contract);
+    setPlannedMonthlyFee(contractFeeAt(contract, year + 1, 1));
+  }
+
+  function saveNextYearPlan() {
+    if (!planningContract || plannedMonthlyFee <= 0) return;
+    updateContract(planningContract.id, {
+      feeHistory: historyWithNextYearFee(planningContract, plannedMonthlyFee),
+    });
+    toast.success(`Fee de ${year + 1} salvo para ${planningContract.client}.`);
+    setPlanningContract(null);
+  }
+
   const totalMRR = data.contracts
     .filter((c) => c.status === "Ativo")
     .reduce((s, c) => s + contractFeeAt(c, new Date().getFullYear(), new Date().getMonth() + 1), 0);
@@ -139,6 +171,18 @@ export default function ContractsPage() {
           Novo Contrato
         </Button>
       </div>
+
+      {searchParams.get("plan") === "next-year" && (
+        <div className="flex flex-col gap-3 rounded-xl border border-orbi-amber/30 bg-orbi-amber/10 p-4 sm:flex-row sm:items-center">
+          <CalendarRange className="h-5 w-5 shrink-0 text-orbi-amber" />
+          <div>
+            <p className="font-semibold">Planejamento de MRR para {year + 1}</p>
+            <p className="text-sm text-muted-foreground">
+              Toque ou clique no valor “MRR Próx” de cada contrato para informar o fee mensal planejado.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Summary cards */}
       <div className="grid gap-4 md:grid-cols-4">
@@ -296,10 +340,16 @@ export default function ContractsPage() {
                       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">MRR Ano</p>
                       <p className="mt-0.5 truncate text-sm font-semibold">{currency(c.mrrYear)}</p>
                     </div>
-                    <div className="rounded-lg bg-muted/60 p-2.5">
+                    <button
+                      type="button"
+                      className="rounded-lg border border-orbi-amber/20 bg-orbi-amber/10 p-2.5 text-left transition-colors hover:border-orbi-amber/50"
+                      onClick={() => openNextYearPlan(c)}
+                      aria-label={`Planejar MRR de ${year + 1} para ${c.client}`}
+                    >
                       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">MRR Próx</p>
-                      <p className="mt-0.5 truncate text-sm font-semibold">{currency(c.mrrNextYear)}</p>
-                    </div>
+                      <p className="mt-0.5 truncate text-sm font-semibold text-orbi-amber">{currency(c.mrrNextYear)}</p>
+                      <p className="mt-1 text-[9px] text-muted-foreground">Toque para editar</p>
+                    </button>
                   </div>
                   <div className="mt-3 flex justify-end gap-1 border-t border-border/50 pt-3">
                     <Button variant="outline" size="sm" className="min-h-10 gap-2" onClick={() => openEdit(c)}>
@@ -345,7 +395,17 @@ export default function ContractsPage() {
                       <TableCell className="text-center">{c.durationMonths}m</TableCell>
                       <TableCell className="text-center">{c.mInYear}</TableCell>
                       <TableCell className="text-right">{currency(c.mrrYear)}</TableCell>
-                      <TableCell className="text-right">{currency(c.mrrNextYear)}</TableCell>
+                      <TableCell className="text-right">
+                        <button
+                          type="button"
+                          className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-orbi-amber/20 bg-orbi-amber/10 px-2.5 font-medium text-orbi-amber transition-colors hover:border-orbi-amber/50"
+                          onClick={() => openNextYearPlan(c)}
+                          aria-label={`Planejar MRR de ${year + 1} para ${c.client}`}
+                        >
+                          {currency(c.mrrNextYear)}
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                      </TableCell>
                       <TableCell className="text-center">
                         <Badge className={statusColors[c.status]}>{c.status}</Badge>
                       </TableCell>
@@ -371,6 +431,89 @@ export default function ContractsPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={Boolean(planningContract)} onOpenChange={(open) => !open && setPlanningContract(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Planejar MRR de {year + 1}</DialogTitle>
+          </DialogHeader>
+          {planningContract && (
+            <div className="space-y-4 py-2">
+              <div className="rounded-lg bg-muted/60 p-3">
+                <p className="font-medium">{planningContract.client}</p>
+                <p className="text-sm text-muted-foreground">
+                  Vigência planejada a partir de janeiro de {year + 1}.
+                </p>
+              </div>
+
+              {monthsInYear(planningContract.saleDate, planningContract.durationMonths, year + 1) > 0 ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="planned-next-year-fee">Fee mensal planejado (R$)</Label>
+                    <Input
+                      id="planned-next-year-fee"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      inputMode="decimal"
+                      autoFocus
+                      value={plannedMonthlyFee || ""}
+                      onChange={(event) => setPlannedMonthlyFee(parseFloat(event.target.value) || 0)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-lg border border-border/60 p-3">
+                      <p className="text-xs text-muted-foreground">Meses ativos em {year + 1}</p>
+                      <p className="mt-1 text-lg font-semibold">
+                        {monthsInYear(planningContract.saleDate, planningContract.durationMonths, year + 1)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-orbi-amber/30 bg-orbi-amber/10 p-3">
+                      <p className="text-xs text-muted-foreground">Projeção anual</p>
+                      <p className="mt-1 text-lg font-semibold text-orbi-amber">
+                        {currency(contractRevenueInYear({
+                          ...planningContract,
+                          feeHistory: plannedMonthlyFee > 0
+                            ? historyWithNextYearFee(planningContract, plannedMonthlyFee)
+                            : planningContract.feeHistory,
+                        }, year + 1))}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    O valor é salvo como reajuste futuro e não altera o fee vigente deste ano.
+                  </p>
+                </>
+              ) : (
+                <div className="rounded-lg border border-orbi-rose/30 bg-orbi-rose/10 p-4">
+                  <p className="font-medium">Este contrato termina antes de {year + 1}.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Para projetar receita, primeiro confirme a renovação aumentando a duração do contrato.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPlanningContract(null)}>Cancelar</Button>
+            {planningContract && monthsInYear(planningContract.saleDate, planningContract.durationMonths, year + 1) > 0 ? (
+              <Button onClick={saveNextYearPlan} disabled={plannedMonthlyFee <= 0}>
+                Salvar planejamento
+              </Button>
+            ) : planningContract ? (
+              <Button
+                onClick={() => {
+                  const contract = planningContract;
+                  setPlanningContract(null);
+                  openEdit(contract);
+                }}
+              >
+                Editar duração
+              </Button>
+            ) : null}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
