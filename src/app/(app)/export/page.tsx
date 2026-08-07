@@ -21,6 +21,9 @@ import {
 } from "@/lib/calculations";
 import { toast } from "sonner";
 import { createBackup, OrbiCoreBackup, validateBackup } from "@/lib/backup";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { availableYears, currentCalendarYear } from "@/lib/years";
+import { PageLoading } from "@/components/page-loading";
 
 type ExportKind = "excel" | "csv" | "json";
 
@@ -50,11 +53,12 @@ export default function ExportPage() {
   const [pendingBackup, setPendingBackup] = useState<OrbiCoreBackup | null>(null);
   const [restoreConfirmation, setRestoreConfirmation] = useState("");
   const [restoreFileName, setRestoreFileName] = useState("");
+  const [year, setYear] = useState(currentCalendarYear());
+  const [safetyBackupDownloaded, setSafetyBackupDownloaded] = useState(false);
   const restoreInputRef = useRef<HTMLInputElement>(null);
 
-  if (!loaded) return null;
+  if (!loaded) return <PageLoading />;
 
-  const year = data.profile.currentYear;
   const profileName = safeFileName(data.profile.name || "usuario");
   const hasData = data.contracts.length > 0
     || data.meetings.length > 0
@@ -293,6 +297,7 @@ export default function ExportPage() {
       }
       setRestoreFileName(file.name);
       setRestoreConfirmation("");
+      setSafetyBackupDownloaded(false);
       setPendingBackup(validation.backup);
     } catch {
       toast.error("Não foi possível ler o arquivo. Selecione um backup JSON válido.");
@@ -301,8 +306,6 @@ export default function ExportPage() {
 
   function confirmRestore() {
     if (!pendingBackup || restoreConfirmation !== "RESTAURAR") return;
-    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-    downloadJsonBackup(`OrbiCore_antes_da_restauracao_${profileName}_${stamp}.json`);
     restoreData(pendingBackup.data);
     setPendingBackup(null);
     setRestoreConfirmation("");
@@ -311,9 +314,18 @@ export default function ExportPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Exportar dados</h2>
-        <p className="text-muted-foreground">Baixe relatórios para análise ou um backup completo dos seus dados.</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Exportar dados</h2>
+          <p className="text-muted-foreground">Baixe relatórios para análise ou um backup completo dos seus dados.</p>
+        </div>
+        <div className="space-y-1">
+          <Label>Ano dos relatórios</Label>
+          <Select value={String(year)} onValueChange={(value) => setYear(Number(value))}>
+            <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+            <SelectContent>{availableYears(data).map((option) => <SelectItem key={option} value={String(option)}>{option}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="rounded-xl border border-orbi-emerald/30 bg-orbi-emerald/10 p-4">
@@ -411,8 +423,15 @@ export default function ExportPage() {
                 <Count label="Folhas" value={pendingBackup.counts.payroll} />
               </div>
               <div className="rounded-lg border border-orbi-amber/30 bg-orbi-amber/10 p-3 text-sm">
-                Os dados atuais serão substituídos. Uma cópia de segurança do estado atual será baixada antes da restauração. Imagens armazenadas no Supabase não fazem parte do arquivo JSON.
+                Os dados atuais serão substituídos. Baixe e guarde a cópia atual antes de liberar a restauração. Imagens armazenadas no Supabase não fazem parte do arquivo JSON.
               </div>
+              <Button type="button" variant={safetyBackupDownloaded ? "outline" : "default"} className="w-full gap-2" onClick={() => {
+                const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+                downloadJsonBackup(`OrbiCore_antes_da_restauracao_${profileName}_${stamp}.json`);
+                setSafetyBackupDownloaded(true);
+              }}>
+                <Download className="h-4 w-4" />{safetyBackupDownloaded ? "Cópia atual baixada" : "1. Baixar dados atuais"}
+              </Button>
               <div className="space-y-2">
                 <Label htmlFor="restore-confirmation">Digite RESTAURAR para confirmar</Label>
                 <Input id="restore-confirmation" value={restoreConfirmation} onChange={(event) => setRestoreConfirmation(event.target.value.toUpperCase())} autoComplete="off" />
@@ -421,7 +440,7 @@ export default function ExportPage() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setPendingBackup(null)}>Cancelar</Button>
-            <Button variant="destructive" disabled={restoreConfirmation !== "RESTAURAR"} onClick={confirmRestore}>Criar cópia e restaurar</Button>
+            <Button variant="destructive" disabled={!safetyBackupDownloaded || restoreConfirmation !== "RESTAURAR"} onClick={confirmRestore}>2. Restaurar backup</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

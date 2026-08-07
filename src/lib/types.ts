@@ -218,7 +218,7 @@ export interface PageCardsLayout {
   hidden: string[];
 }
 
-export type SyncStatus = "loading" | "synced" | "saving" | "offline" | "error";
+export type SyncStatus = "loading" | "synced" | "saving" | "offline" | "error" | "conflict";
 
 // --- Store ---
 export interface AppData {

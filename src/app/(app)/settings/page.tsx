@@ -13,9 +13,23 @@ import { toast } from "sonner";
 import { AppFeatureKey, ModuleKey } from "@/lib/types";
 import { profileImageUrl, profileInitials, removeProfileImage, uploadProfileImage } from "@/lib/profile-image";
 import { formatFileSize, optimizeImage } from "@/lib/image-optimizer";
-import { removeProductImages } from "@/lib/product-images";
-import { allBackgroundPaths, removeBackgroundImages } from "@/lib/background-image";
 import { BackgroundSettings } from "@/components/background-settings";
+import { useConfirm } from "@/components/confirm-provider";
+import { createBackup } from "@/lib/backup";
+import { PageLoading } from "@/components/page-loading";
+import { currentCalendarYear } from "@/lib/years";
+
+function downloadSafetyBackup(data: import("@/lib/types").AppData, reason: string) {
+  const blob = new Blob([JSON.stringify(createBackup(data), null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `OrbiCore_antes_de_${reason}_${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 const THEMES: { key: ThemeKey; label: string; description: string; icon: React.ReactNode; preview: string[] }[] = [
   {
@@ -53,11 +67,11 @@ const ALL_MODULES: { key: ModuleKey; label: string; description: string }[] = [
 ];
 
 export default function SettingsPage() {
+  const confirm = useConfirm();
   const { data, loaded, updateProfile, resetData, loadDemoData } = useAppStore();
   const { theme, setTheme } = useTheme();
   const [name, setName] = useState("");
   const [profileType, setProfileType] = useState<"person" | "company">("company");
-  const [year, setYear] = useState(2026);
   const [enabledModules, setEnabledModules] = useState<ModuleKey[]>([]);
   const [enabledFeatures, setEnabledFeatures] = useState<AppFeatureKey[]>([]);
   const [imageBusy, setImageBusy] = useState(false);
@@ -67,18 +81,16 @@ export default function SettingsPage() {
     if (loaded) {
       setName(data.profile.name);
       setProfileType(data.profile.profileType ?? "company");
-      setYear(data.profile.currentYear);
       setEnabledModules(data.profile.enabledModules);
       setEnabledFeatures(data.profile.enabledFeatures ?? []);
     }
-  }, [loaded, data.profile.name, data.profile.profileType, data.profile.currentYear, data.profile.enabledModules, data.profile.enabledFeatures]);
+  }, [loaded, data.profile.name, data.profile.profileType, data.profile.enabledModules, data.profile.enabledFeatures]);
 
   const sameSet = (a: string[], b: string[]) =>
     a.length === b.length && [...a].sort().join("|") === [...b].sort().join("|");
   const dirty = loaded && (
     name !== data.profile.name ||
     profileType !== (data.profile.profileType ?? "company") ||
-    year !== data.profile.currentYear ||
     !sameSet(enabledModules, data.profile.enabledModules) ||
     !sameSet(enabledFeatures, data.profile.enabledFeatures ?? [])
   );
@@ -96,13 +108,12 @@ export default function SettingsPage() {
   function discardChanges() {
     setName(data.profile.name);
     setProfileType(data.profile.profileType ?? "company");
-    setYear(data.profile.currentYear);
     setEnabledModules(data.profile.enabledModules);
     setEnabledFeatures(data.profile.enabledFeatures ?? []);
     toast.info("Alterações descartadas.");
   }
 
-  if (!loaded) return null;
+  if (!loaded) return <PageLoading />;
 
   function toggleModule(key: ModuleKey) {
     // Dashboard is always enabled
@@ -113,15 +124,13 @@ export default function SettingsPage() {
   }
 
   function handleSave() {
-    updateProfile({ name, profileType, currentYear: year, enabledModules, enabledFeatures });
+    updateProfile({ name, profileType, currentYear: currentCalendarYear(), enabledModules, enabledFeatures });
     toast.success("Configurações salvas!");
   }
 
   async function handleReset() {
-    if (confirm("Isso vai apagar TODOS os dados da conta. Tem certeza?")) {
-      await removeProfileImage(data.profile.imagePath).catch(() => undefined);
-      await removeProductImages(data.products.flatMap((product) => product.imagePaths ?? [])).catch(() => undefined);
-      await removeBackgroundImages(allBackgroundPaths(data.profile.dashboardBackgrounds)).catch(() => undefined);
+    if (await confirm({ title: "Apagar todos os dados?", description: "Contratos, reuniões, produtos, vendas, estoque, folha e metas serão apagados. Um backup será baixado antes.", confirmLabel: "Apagar meus dados", confirmationText: "APAGAR", destructive: true })) {
+      downloadSafetyBackup(data, "apagar_dados");
       resetData();
       toast.success("Dados apagados!");
     }
@@ -177,8 +186,8 @@ export default function SettingsPage() {
   }
 
   async function handleLoadDemo() {
-    if (confirm("Isso vai substituir TODOS os dados atuais pela demonstração. Continuar?")) {
-      await removeProductImages(data.products.flatMap((product) => product.imagePaths ?? [])).catch(() => undefined);
+    if (await confirm({ title: "Substituir pelos dados de demonstração?", description: "Todos os dados atuais serão substituídos. Um backup será baixado antes.", confirmLabel: "Carregar demonstração", confirmationText: "DEMONSTRACAO", destructive: true })) {
+      downloadSafetyBackup(data, "carregar_demonstracao");
       loadDemoData();
       toast.success("Dados de demonstração carregados!");
     }
@@ -270,8 +279,9 @@ export default function SettingsPage() {
               <Input value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>Ano Fiscal</Label>
-              <Input type="number" value={year} onChange={(e) => setYear(parseInt(e.target.value) || 2026)} />
+              <Label>Ano atual (automático)</Label>
+              <Input type="number" value={currentCalendarYear()} disabled />
+              <p className="text-xs text-muted-foreground">Atualiza sozinho na virada do ano. Os anos anteriores continuam disponíveis nos relatórios.</p>
             </div>
           </div>
           <Button onClick={handleSave} className="gap-2">

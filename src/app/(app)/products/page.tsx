@@ -22,6 +22,8 @@ import { formatFileSize, optimizeImage } from "@/lib/image-optimizer";
 import { MAX_PRODUCT_IMAGES, productImageUrl, removeProductImages, uploadProductImage } from "@/lib/product-images";
 import { CustomizableCards } from "@/components/customizable-cards";
 import { CurrencyInput } from "@/components/currency-input";
+import { useConfirm } from "@/components/confirm-provider";
+import { PageLoading } from "@/components/page-loading";
 
 type FormData = Omit<Product, "id" | "createdAt">;
 type MovementForm = Omit<StockMovement, "id" | "createdAt"> & {
@@ -45,6 +47,7 @@ const emptyForm: FormData = {
 };
 
 export default function ProductsPage() {
+  const confirm = useConfirm();
   const { data, loaded, addProduct, updateProduct, deleteProduct, addStockMovement, updateStockMovement, deleteStockMovement } = useAppStore();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -228,7 +231,7 @@ export default function ProductsPage() {
   }
 
   async function handleDeleteProduct(product: Product) {
-    if (!confirm(`Excluir ${product.name} e todo o histórico relacionado?`)) return;
+    if (!await confirm({ title: "Excluir produto e histórico?", description: `${product.name}, suas vendas e movimentações relacionadas serão removidos.`, confirmLabel: "Excluir tudo" })) return;
     try {
       await removeProductImages(product.imagePaths ?? []);
       deleteProduct(product.id);
@@ -238,13 +241,13 @@ export default function ProductsPage() {
     }
   }
 
-  function handleDeleteMovement(item: StockMovement) {
-    if (!window.confirm("Excluir esta movimentação? O saldo do estoque será recalculado.")) return;
+  async function handleDeleteMovement(item: StockMovement) {
+    if (!await confirm({ title: "Excluir movimentação?", description: "O saldo do estoque será recalculado após a exclusão.", confirmLabel: "Excluir movimentação" })) return;
     deleteStockMovement(item.id);
     toast.success("Movimentação excluída e estoque recalculado.");
   }
 
-  if (!loaded) return null;
+  if (!loaded) return <PageLoading />;
 
   return (
     <div className="space-y-6">

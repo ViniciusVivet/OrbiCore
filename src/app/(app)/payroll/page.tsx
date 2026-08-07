@@ -13,22 +13,18 @@ import { calcPayroll } from "@/lib/calculations";
 import { PayrollMonth } from "@/lib/types";
 import { toast } from "sonner";
 import { CurrencyInput } from "@/components/currency-input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { availableYears, currentCalendarYear } from "@/lib/years";
+import { PageLoading } from "@/components/page-loading";
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
+const EMPTY_PAYROLL_FORM = { baseSalary: 0, homeOffice: 0, commission: 0, workDays: 22, sundaysHolidays: 4, otherDeductions: 0 };
 
 export default function PayrollPage() {
   const { data, loaded, upsertPayroll } = useAppStore();
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
-  const [form, setForm] = useState({
-    baseSalary: 0,
-    homeOffice: 0,
-    commission: 0,
-    workDays: 22,
-    sundaysHolidays: 4,
-    otherDeductions: 0,
-  });
-
-  const year = loaded ? data.profile.currentYear : new Date().getFullYear();
+  const [year, setYear] = useState(currentCalendarYear());
+  const [form, setForm] = useState(EMPTY_PAYROLL_FORM);
 
   useEffect(() => {
     if (loaded) {
@@ -42,11 +38,11 @@ export default function PayrollPage() {
           sundaysHolidays: existing.sundaysHolidays,
           otherDeductions: existing.otherDeductions,
         });
-      }
+      } else setForm(EMPTY_PAYROLL_FORM);
     }
   }, [loaded, data.payroll, selectedMonth, year]);
 
-  if (!loaded) return null;
+  if (!loaded) return <PageLoading />;
 
   function loadMonth(month: number) {
     setSelectedMonth(month);
@@ -103,9 +99,15 @@ export default function PayrollPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Cálculo Mensal</h2>
-        <p className="text-muted-foreground">Simule salário, comissão, DSR e descontos — {year}</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Cálculo Mensal</h2>
+          <p className="text-muted-foreground">Simule salário, comissão, DSR e descontos — {year}</p>
+        </div>
+        <Select value={String(year)} onValueChange={(value) => setYear(Number(value))}>
+          <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+          <SelectContent>{availableYears(data).map((option) => <SelectItem key={option} value={String(option)}>{option}</SelectItem>)}</SelectContent>
+        </Select>
       </div>
 
       <div className="flex items-center gap-2 p-1 bg-muted rounded-lg w-fit">

@@ -145,6 +145,8 @@ export function useStore() {
       if (remote) {
         revisionRef.current = remote.revision;
       }
+      setSyncStatus("conflict");
+      return;
     }
     setSyncStatus(navigator.onLine ? "error" : "offline");
   }, []);
@@ -383,6 +385,29 @@ export function useStore() {
     update(() => normalizeData(backupData));
   }, [update]);
 
+  const reloadFromCloud = useCallback(async () => {
+    const userId = userIdRef.current;
+    if (!userId) return false;
+    setSyncStatus("loading");
+    const remote = await loadFromSupabase(userId);
+    if (!remote) {
+      setSyncStatus(navigator.onLine ? "error" : "offline");
+      return false;
+    }
+    dirtyRef.current = null;
+    revisionRef.current = remote.revision;
+    applyData(remote.data);
+    saveLocalCache(userId, remote.data);
+    setSyncStatus("synced");
+    return true;
+  }, [applyData]);
+
+  const retrySync = useCallback(() => {
+    if (!dirtyRef.current) return;
+    setSyncStatus("saving");
+    scheduleSave();
+  }, [scheduleSave]);
+
   // --- Logout ---
   const logout = useCallback(async () => {
     // Descarta saves pendentes/agendados para não escrever após o signOut.
@@ -422,6 +447,8 @@ export function useStore() {
     resetData,
     loadDemoData,
     restoreData,
+    reloadFromCloud,
+    retrySync,
     logout,
   };
 }

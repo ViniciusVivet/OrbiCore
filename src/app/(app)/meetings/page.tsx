@@ -21,6 +21,8 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 import { chartTokens, chartTooltipStyle } from "@/lib/chart-theme";
 import { CurrencyInput } from "@/components/currency-input";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/confirm-provider";
+import { PageLoading } from "@/components/page-loading";
 
 const COLORS = {
   cyan: chartTokens.cyan,
@@ -69,6 +71,7 @@ const emptyForm: FormData = {
 type MeetingRow = Meeting & { expectedRevenue: number; alert: string };
 
 export default function MeetingsPage() {
+  const confirm = useConfirm();
   const { data, loaded, addMeeting, updateMeeting, deleteMeeting } = useAppStore();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -87,7 +90,7 @@ export default function MeetingsPage() {
 
   const { sorted: meetings, sortKey, sortDir, toggleSort } = useSortable<MeetingRow>(enriched);
 
-  if (!loaded) return null;
+  if (!loaded) return <PageLoading />;
 
   const totalRevenue = expectedRevenue(data.meetings);
   const totalMeetings = data.meetings.length;
@@ -143,8 +146,8 @@ export default function MeetingsPage() {
     setDialogOpen(false);
   }
 
-  function handleDelete(meeting: Meeting) {
-    if (!window.confirm(`Excluir a reunião com ${meeting.clientLead}? Esta ação não pode ser desfeita.`)) return;
+  async function handleDelete(meeting: Meeting) {
+    if (!await confirm({ title: "Excluir reunião?", description: `A reunião com ${meeting.clientLead} será removida.`, confirmLabel: "Excluir reunião" })) return;
     deleteMeeting(meeting.id);
     toast.success("Reunião excluída.");
   }

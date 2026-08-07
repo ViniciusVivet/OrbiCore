@@ -17,10 +17,13 @@ import { Sale } from "@/lib/types";
 import { toast } from "sonner";
 import { CustomizableCards } from "@/components/customizable-cards";
 import { CurrencyInput } from "@/components/currency-input";
+import { useConfirm } from "@/components/confirm-provider";
+import { PageLoading } from "@/components/page-loading";
 
 type FormData = Omit<Sale, "id" | "createdAt">;
 
 export default function SalesPage() {
+  const confirm = useConfirm();
   const { data, loaded, addSale, updateSale, deleteSale } = useAppStore();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -32,7 +35,7 @@ export default function SalesPage() {
     unitCostPrice: 0,
   });
 
-  if (!loaded) return null;
+  if (!loaded) return <PageLoading />;
 
   const { products, sales, stockMovements } = data;
 
@@ -94,8 +97,8 @@ export default function SalesPage() {
     setDialogOpen(false);
   }
 
-  function handleDelete(sale: Sale, productName: string) {
-    if (!window.confirm(`Excluir a venda de ${productName}? O estoque será recalculado.`)) return;
+  async function handleDelete(sale: Sale, productName: string) {
+    if (!await confirm({ title: "Excluir venda?", description: `A venda de ${productName} será removida e o estoque será recalculado.`, confirmLabel: "Excluir venda" })) return;
     deleteSale(sale.id);
     toast.success("Venda excluída e estoque recalculado.");
   }

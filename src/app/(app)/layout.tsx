@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppStore } from "@/components/store-provider";
 import { profileImageUrl, profileInitials } from "@/lib/profile-image";
 import Link from "next/link";
+import { ConfirmProvider } from "@/components/confirm-provider";
 
 function MobileProfile() {
   const { data } = useAppStore();
@@ -41,6 +42,7 @@ function MobileProfile() {
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <StoreProvider>
+      <ConfirmProvider>
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset>
@@ -58,6 +60,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <Onboarding />
         <PwaManager />
       </SidebarProvider>
+      </ConfirmProvider>
     </StoreProvider>
   );
 }

@@ -21,6 +21,9 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, PieCha
 import { chartTokens, chartSeries, chartTooltipStyle } from "@/lib/chart-theme";
 import { toast } from "sonner";
 import { CurrencyInput } from "@/components/currency-input";
+import { currentCalendarYear } from "@/lib/years";
+import { useConfirm } from "@/components/confirm-provider";
+import { PageLoading } from "@/components/page-loading";
 
 const COLORS = {
   cyan: chartTokens.cyan,
@@ -60,6 +63,7 @@ type ContractRow = Contract & {
 };
 
 export default function ContractsPage() {
+  const confirm = useConfirm();
   const { data, loaded, addContract, updateContract, deleteContract } = useAppStore();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -70,8 +74,9 @@ export default function ContractsPage() {
   const [planningContract, setPlanningContract] = useState<Contract | null>(null);
   const [plannedMonthlyFee, setPlannedMonthlyFee] = useState(0);
   const [planningYear, setPlanningYear] = useState(new Date().getFullYear() + 1);
+  const [extendPlannedContract, setExtendPlannedContract] = useState(false);
 
-  const year = loaded ? data.profile.currentYear : new Date().getFullYear();
+  const year = currentCalendarYear();
   const filtered = loaded
     ? data.contracts.filter((c) => statusFilter === "Todos" || c.status === statusFilter)
     : [];
@@ -91,7 +96,7 @@ export default function ContractsPage() {
 
   const { sorted: contracts, sortKey, sortDir, toggleSort } = useSortable<ContractRow>(enriched);
 
-  if (!loaded) return null;
+  if (!loaded) return <PageLoading />;
 
   function openNew() {
     setEditingId(null);
@@ -154,11 +159,6 @@ export default function ContractsPage() {
         ...feeHistory.filter((change) => change.effectiveFrom !== `${year + 1}-01`),
         { effectiveFrom: `${year + 1}-01`, monthlyFee: formNextYearFee },
       ];
-      if (monthsInYear(form.saleDate, durationMonths, year + 1) === 0) {
-        const start = parseLocalDate(form.saleDate);
-        const startIndex = start.getFullYear() * 12 + start.getMonth() + 1;
-        durationMonths = Math.max(durationMonths, (year + 1) * 12 + 12 - startIndex + 1);
-      }
     }
     const normalizedForm = {
       ...form,
@@ -191,6 +191,7 @@ export default function ContractsPage() {
     setPlanningContract(contract);
     setPlanningYear(targetYear);
     setPlannedMonthlyFee(contractFeeAt(contract, targetYear, 1));
+    setExtendPlannedContract(false);
   }
 
   function changePlanningYear(contract: Contract, targetYear: number) {
@@ -206,7 +207,7 @@ export default function ContractsPage() {
   }
 
   function planningDuration(contract: Contract) {
-    return monthsInYear(contract.saleDate, contract.durationMonths, planningYear) > 0
+    return monthsInYear(contract.saleDate, contract.durationMonths, planningYear) > 0 || !extendPlannedContract
       ? contract.durationMonths
       : durationThroughPlanningYear(contract);
   }
@@ -221,7 +222,7 @@ export default function ContractsPage() {
       monthsInYear(planningContract.saleDate, planningContract.durationMonths, planningYear) === 0;
     updateContract(planningContract.id, {
       feeHistory: historyWithPlannedFee(planningContract, plannedMonthlyFee),
-      ...(needsPlannedRenewal
+      ...(needsPlannedRenewal && extendPlannedContract
         ? { durationMonths: durationThroughPlanningYear(planningContract) }
         : {}),
     });
@@ -229,8 +230,8 @@ export default function ContractsPage() {
     setPlanningContract(null);
   }
 
-  function handleDelete(contract: Contract) {
-    if (!window.confirm(`Excluir o contrato de ${contract.client}? Esta ação não pode ser desfeita.`)) return;
+  async function handleDelete(contract: Contract) {
+    if (!await confirm({ title: "Excluir contrato?", description: `O contrato de ${contract.client} será removido. Esta ação não pode ser desfeita.`, confirmLabel: "Excluir contrato" })) return;
     deleteContract(contract.id);
     toast.success("Contrato excluído.");
   }
@@ -549,10 +550,14 @@ export default function ContractsPage() {
 
               {monthsInYear(planningContract.saleDate, planningContract.durationMonths, planningYear) === 0 && (
                 <div className="rounded-lg border border-orbi-rose/30 bg-orbi-rose/10 p-4">
-                  <p className="font-medium">Renovação planejada</p>
+                  <p className="font-medium">Contrato fora da vigência</p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Este contrato termina antes de {planningYear}. Ao salvar, a projeção será renovada até dezembro de {planningYear}.
+                    Este contrato termina antes de {planningYear}. O valor pode ser guardado sem alterar a duração ou você pode planejar a renovação.
                   </p>
+                  <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm">
+                    <input type="checkbox" className="mt-0.5 size-4" checked={extendPlannedContract} onChange={(event) => setExtendPlannedContract(event.target.checked)} />
+                    <span>Estender a projeção do contrato até dezembro de {planningYear}</span>
+                  </label>
                 </div>
               )}
               <div className="space-y-2">
@@ -654,7 +659,7 @@ export default function ContractsPage() {
               <Input type="number" value={form.durationMonths || ""} onChange={(e) => setForm({ ...form, durationMonths: parseInt(e.target.value) || 0 })} />
               {formNextYearTouched && formNextYearFee > 0 && monthsInYear(form.saleDate, form.durationMonths, year + 1) === 0 && (
                 <p className="text-xs text-orbi-amber">
-                  Ao salvar, o planejamento será estendido até dezembro de {year + 1}.
+                  O valor futuro será salvo, mas a duração do contrato não será alterada automaticamente.
                 </p>
               )}
             </div>

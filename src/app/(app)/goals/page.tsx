@@ -13,6 +13,8 @@ import { mrrInMonth, mrrInQuarter, mrrEnteringYear, activeContractsCount, weight
 import { toast } from "sonner";
 import type { GoalPlan } from "@/lib/types";
 import { CurrencyInput } from "@/components/currency-input";
+import { availableYears, currentCalendarYear } from "@/lib/years";
+import { PageLoading } from "@/components/page-loading";
 
 const repeat = (value: number) => Array.from({ length: 12 }, () => value);
 
@@ -34,7 +36,7 @@ export default function GoalsPage() {
 
   useEffect(() => {
     if (loaded && selectedYear === 0) {
-      setSelectedYear(data.profile.currentYear);
+      setSelectedYear(currentCalendarYear());
     }
   }, [loaded, selectedYear, data.profile.currentYear]);
 
@@ -70,9 +72,9 @@ export default function GoalsPage() {
     setSalesRevenueMonthly(monthlySalesRevenueGoals[index] ?? 0);
   }, [monthlyRevenueGoals, monthlyMeetingGoals, monthlyCloseRateTargets, monthlyNewContractGoals, monthlySalesRevenueGoals]);
 
-  if (!loaded) return null;
+  if (!loaded) return <PageLoading />;
 
-  const year = selectedYear || data.profile.currentYear;
+  const year = selectedYear || currentCalendarYear();
   const { contracts, meetings } = data;
   const currentMonth = new Date().getMonth() + 1;
   const currentQuarter = Math.ceil(currentMonth / 3);
@@ -94,7 +96,7 @@ export default function GoalsPage() {
     };
     upsertGoalPlan(plan);
     updateProfile({
-      ...(year === data.profile.currentYear ? {
+      ...(year === currentCalendarYear() ? {
         yearlyGoal,
         meetingGoalMonthly: monthlyMeetingGoals[new Date().getMonth()] ?? 0,
         closeRateTarget: monthlyCloseRateTargets[new Date().getMonth()] ?? 0,
@@ -140,7 +142,7 @@ export default function GoalsPage() {
     return d.getFullYear() === year && d.getMonth() + 1 === currentMonth;
   }).length;
 
-  const yearOptions = [year - 1, year, year + 1];
+  const yearOptions = availableYears(data);
 
   return (
     <div className="space-y-6">
