@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { Plus, FileText, Pencil, Trash2, Shield, TrendingUp, CalendarRange } from "lucide-react";
+import { Plus, FileText, Pencil, Trash2, Shield, TrendingUp, CircleHelp } from "lucide-react";
 import { useAppStore } from "@/components/store-provider";
 import { currency, dateFormat, percent } from "@/lib/format";
 import { monthsInYear, clientConcentration, mrrByRevenueType, churnRisk, contractFeeAt, contractRevenueInYear, parseLocalDate } from "@/lib/calculations";
@@ -68,6 +69,7 @@ export default function ContractsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("Todos");
   const [planningContract, setPlanningContract] = useState<Contract | null>(null);
   const [plannedMonthlyFee, setPlannedMonthlyFee] = useState(0);
+  const [planningYear, setPlanningYear] = useState(new Date().getFullYear() + 1);
 
   const year = loaded ? data.profile.currentYear : new Date().getFullYear();
   const filtered = loaded
@@ -176,8 +178,8 @@ export default function ContractsPage() {
     setDialogOpen(false);
   }
 
-  function historyWithNextYearFee(contract: Contract, monthlyFee: number) {
-    const effectiveFrom = `${year + 1}-01`;
+  function historyWithPlannedFee(contract: Contract, monthlyFee: number, targetYear = planningYear) {
+    const effectiveFrom = `${targetYear}-01`;
     return [
       ...(contract.feeHistory ?? []).filter((change) => change.effectiveFrom !== effectiveFrom),
       { effectiveFrom, monthlyFee },
@@ -185,21 +187,28 @@ export default function ContractsPage() {
   }
 
   function openNextYearPlan(contract: Contract) {
+    const targetYear = year + 1;
     setPlanningContract(contract);
-    setPlannedMonthlyFee(contractFeeAt(contract, year + 1, 1));
+    setPlanningYear(targetYear);
+    setPlannedMonthlyFee(contractFeeAt(contract, targetYear, 1));
   }
 
-  function durationThroughNextYear(contract: Contract) {
+  function changePlanningYear(contract: Contract, targetYear: number) {
+    setPlanningYear(targetYear);
+    setPlannedMonthlyFee(contractFeeAt(contract, targetYear, 1));
+  }
+
+  function durationThroughPlanningYear(contract: Contract) {
     const start = parseLocalDate(contract.saleDate);
     const startIndex = start.getFullYear() * 12 + start.getMonth() + 1;
-    const nextYearEndIndex = (year + 1) * 12 + 12;
-    return Math.max(contract.durationMonths, nextYearEndIndex - startIndex + 1);
+    const planningYearEndIndex = planningYear * 12 + 12;
+    return Math.max(contract.durationMonths, planningYearEndIndex - startIndex + 1);
   }
 
   function planningDuration(contract: Contract) {
-    return monthsInYear(contract.saleDate, contract.durationMonths, year + 1) > 0
+    return monthsInYear(contract.saleDate, contract.durationMonths, planningYear) > 0
       ? contract.durationMonths
-      : durationThroughNextYear(contract);
+      : durationThroughPlanningYear(contract);
   }
 
   function saveNextYearPlan() {
@@ -209,14 +218,14 @@ export default function ContractsPage() {
       return;
     }
     const needsPlannedRenewal =
-      monthsInYear(planningContract.saleDate, planningContract.durationMonths, year + 1) === 0;
+      monthsInYear(planningContract.saleDate, planningContract.durationMonths, planningYear) === 0;
     updateContract(planningContract.id, {
-      feeHistory: historyWithNextYearFee(planningContract, plannedMonthlyFee),
+      feeHistory: historyWithPlannedFee(planningContract, plannedMonthlyFee),
       ...(needsPlannedRenewal
-        ? { durationMonths: durationThroughNextYear(planningContract) }
+        ? { durationMonths: durationThroughPlanningYear(planningContract) }
         : {}),
     });
-    toast.success(`MRR mensal de ${year + 1} salvo para ${planningContract.client}.`);
+    toast.success(`MRR mensal de ${planningYear} salvo para ${planningContract.client}.`);
     setPlanningContract(null);
   }
 
@@ -240,25 +249,26 @@ export default function ContractsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Contratos</h2>
-          <p className="text-muted-foreground">
-            Gerencie seus contratos e receita recorrente
-          </p>
+          <div className="flex items-center gap-2">
+            <h2 className="text-2xl font-bold tracking-tight">Contratos</h2>
+            <Popover>
+              <PopoverTrigger className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Como planejar o MRR dos contratos">
+                <CircleHelp className="h-4 w-4" />
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-80">
+                <p className="font-semibold">Como planejar o MRR</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Edite um contrato para ajustar o valor atual ou clique no MRR do próximo ano na lista. No planejamento, você pode escolher qualquer ano de {year} a {year + 10}.
+                </p>
+              </PopoverContent>
+            </Popover>
+          </div>
+          <p className="text-muted-foreground">Gerencie seus contratos e receita recorrente</p>
         </div>
         <Button onClick={openNew} className="w-full gap-2 sm:w-auto">
           <Plus className="h-4 w-4" />
           Novo Contrato
         </Button>
-      </div>
-
-      <div className="flex flex-col gap-3 rounded-xl border border-orbi-amber/30 bg-orbi-amber/10 p-4 sm:flex-row sm:items-center">
-        <CalendarRange className="h-5 w-5 shrink-0 text-orbi-amber" />
-        <div>
-          <p className="font-semibold">MRR mensal de {year} e {year + 1}</p>
-          <p className="text-sm text-muted-foreground">
-            Use <strong>Editar</strong> para preencher os dois anos juntos ou clique diretamente no valor de {year + 1} na lista.
-          </p>
-        </div>
       </div>
 
       {/* Summary cards */}
@@ -514,27 +524,39 @@ export default function ContractsPage() {
       <Dialog open={Boolean(planningContract)} onOpenChange={(open) => !open && setPlanningContract(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Editar MRR mensal de {year + 1}</DialogTitle>
+            <DialogTitle>Planejar MRR mensal</DialogTitle>
           </DialogHeader>
           {planningContract && (
             <div className="space-y-4 py-2">
               <div className="rounded-lg bg-muted/60 p-3">
                 <p className="font-medium">{planningContract.client}</p>
                 <p className="text-sm text-muted-foreground">
-                  Vigência planejada a partir de janeiro de {year + 1}.
+                  Escolha o ano e informe o valor mensal que valerá a partir de janeiro.
                 </p>
               </div>
 
-              {monthsInYear(planningContract.saleDate, planningContract.durationMonths, year + 1) === 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="planning-year">Ano do planejamento</Label>
+                <Select value={String(planningYear)} onValueChange={(value) => changePlanningYear(planningContract, Number(value))}>
+                  <SelectTrigger id="planning-year"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 11 }, (_, index) => year + index).map((optionYear) => (
+                      <SelectItem key={optionYear} value={String(optionYear)}>{optionYear}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {monthsInYear(planningContract.saleDate, planningContract.durationMonths, planningYear) === 0 && (
                 <div className="rounded-lg border border-orbi-rose/30 bg-orbi-rose/10 p-4">
                   <p className="font-medium">Renovação planejada</p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Este contrato termina antes de {year + 1}. Ao salvar, a projeção será renovada até dezembro de {year + 1}.
+                    Este contrato termina antes de {planningYear}. Ao salvar, a projeção será renovada até dezembro de {planningYear}.
                   </p>
                 </div>
               )}
               <div className="space-y-2">
-                <Label htmlFor="planned-next-year-fee">MRR mensal planejado para {year + 1}</Label>
+                <Label htmlFor="planned-next-year-fee">MRR mensal planejado para {planningYear}</Label>
                     <CurrencyInput
                       id="planned-next-year-fee"
                       value={plannedMonthlyFee}
@@ -543,12 +565,12 @@ export default function ContractsPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg border border-border/60 p-3">
-                  <p className="text-xs text-muted-foreground">Meses projetados em {year + 1}</p>
+                  <p className="text-xs text-muted-foreground">Meses projetados em {planningYear}</p>
                   <p className="mt-1 text-lg font-semibold">
                     {monthsInYear(
                       planningContract.saleDate,
                       planningDuration(planningContract),
-                      year + 1
+                      planningYear
                     )}
                   </p>
                 </div>
@@ -559,9 +581,9 @@ export default function ContractsPage() {
                       ...planningContract,
                       durationMonths: planningDuration(planningContract),
                       feeHistory: plannedMonthlyFee > 0
-                        ? historyWithNextYearFee(planningContract, plannedMonthlyFee)
+                        ? historyWithPlannedFee(planningContract, plannedMonthlyFee)
                         : planningContract.feeHistory,
-                    }, year + 1))}
+                    }, planningYear))}
                   </p>
                 </div>
               </div>
