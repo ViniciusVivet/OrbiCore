@@ -66,7 +66,7 @@ export default function DashboardPage() {
   const currentQuarter = Math.ceil(currentMonth / 3);
 
   // Filters
-  const [year, setYear] = useState(data.profile.currentYear);
+  const [year, setYear] = useState(new Date().getFullYear());
   const [periodView, setPeriodView] = useState<PeriodView>("month");
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedQuarter, setSelectedQuarter] = useState(currentQuarter);
@@ -153,7 +153,18 @@ export default function DashboardPage() {
   const topClient = concentration[0];
   const top3Pct = concentration.length >= 3 ? concentration[2].cumulativePercent : (topClient?.cumulativePercent ?? 0);
 
-  const yearOptions = [year - 1, year, year + 1];
+  const yearsInData = [
+    profile.currentYear,
+    ...contracts.map((contract) => Number(contract.saleDate.slice(0, 4))),
+    ...contracts.flatMap((contract) => (contract.feeHistory ?? []).map((change) => Number(change.effectiveFrom.slice(0, 4)))),
+    ...data.sales.map((sale) => Number(sale.date.slice(0, 4))),
+    ...data.stockMovements.map((movement) => Number(movement.date.slice(0, 4))),
+    ...data.payroll.map((item) => item.year),
+    ...data.goalPlans.map((plan) => plan.year),
+  ].filter((value) => Number.isInteger(value) && value >= 2000 && value <= 2100);
+  const firstYear = Math.min(now.getFullYear() - 2, ...yearsInData);
+  const lastYear = Math.max(now.getFullYear() + 5, ...yearsInData);
+  const yearOptions = Array.from({ length: lastYear - firstYear + 1 }, (_, index) => firstYear + index);
   const viewLabels: Record<DashboardView, { label: string; description: string; icon: React.ReactNode }> = {
     overview: { label: "Visão geral", description: "O essencial do negócio em um só olhar", icon: <Gauge className="h-4 w-4" /> },
     commercial: { label: "Comercial", description: "Contratos, MRR, pipeline e clientes", icon: <Handshake className="h-4 w-4" /> },
@@ -265,7 +276,7 @@ export default function DashboardPage() {
       </nav>
 
       <DashboardGrid>
-      <StoreDashboard />
+      <StoreDashboard year={year} periodView={periodView} selectedMonth={selectedMonth} selectedQuarter={selectedQuarter} />
 
       {showFinancialDashboard && <>
       {/* KPI Cards */}
