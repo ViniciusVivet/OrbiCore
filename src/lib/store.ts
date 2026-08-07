@@ -379,6 +379,10 @@ export function useStore() {
     update(() => normalizeData(SEED_DATA));
   }, [update]);
 
+  const restoreData = useCallback((backupData: AppData) => {
+    update(() => normalizeData(backupData));
+  }, [update]);
+
   // --- Logout ---
   const logout = useCallback(async () => {
     // Descarta saves pendentes/agendados para não escrever após o signOut.
@@ -417,6 +421,7 @@ export function useStore() {
     upsertPayroll,
     resetData,
     loadDemoData,
+    restoreData,
     logout,
   };
 }

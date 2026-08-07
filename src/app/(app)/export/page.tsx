@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, FileJson, FileSpreadsheet, FileText, Loader2, ShieldCheck } from "lucide-react";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Download, FileJson, FileSpreadsheet, FileText, Loader2, RotateCcw, ShieldCheck, Upload } from "lucide-react";
 import { useAppStore } from "@/components/store-provider";
 import { dateFormat, monthName, shortMonthName } from "@/lib/format";
 import {
@@ -17,6 +20,7 @@ import {
   saleProfitAndMargin,
 } from "@/lib/calculations";
 import { toast } from "sonner";
+import { createBackup, OrbiCoreBackup, validateBackup } from "@/lib/backup";
 
 type ExportKind = "excel" | "csv" | "json";
 
@@ -41,8 +45,12 @@ function csvCell(value: unknown) {
 }
 
 export default function ExportPage() {
-  const { data, loaded } = useAppStore();
+  const { data, loaded, restoreData } = useAppStore();
   const [exporting, setExporting] = useState<ExportKind | null>(null);
+  const [pendingBackup, setPendingBackup] = useState<OrbiCoreBackup | null>(null);
+  const [restoreConfirmation, setRestoreConfirmation] = useState("");
+  const [restoreFileName, setRestoreFileName] = useState("");
+  const restoreInputRef = useRef<HTMLInputElement>(null);
 
   if (!loaded) return null;
 
@@ -260,14 +268,45 @@ export default function ExportPage() {
     downloadBlob(new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" }), `OrbiCore_contratos_${year}.csv`);
   }
 
-  function exportJsonBackup() {
-    const backup = {
-      format: "orbicore-backup",
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      data,
-    };
-    downloadBlob(new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" }), `OrbiCore_backup_${profileName}_${new Date().toISOString().slice(0, 10)}.json`);
+  function downloadJsonBackup(fileName?: string) {
+    const backup = createBackup(data);
+    downloadBlob(
+      new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" }),
+      fileName ?? `OrbiCore_backup_${profileName}_${new Date().toISOString().slice(0, 10)}.json`
+    );
+  }
+
+  async function selectRestoreFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error("O arquivo excede o limite de 25 MB.");
+      return;
+    }
+    try {
+      const parsed = JSON.parse(await file.text()) as unknown;
+      const validation = validateBackup(parsed);
+      if (!validation.ok) {
+        toast.error(validation.error);
+        return;
+      }
+      setRestoreFileName(file.name);
+      setRestoreConfirmation("");
+      setPendingBackup(validation.backup);
+    } catch {
+      toast.error("Não foi possível ler o arquivo. Selecione um backup JSON válido.");
+    }
+  }
+
+  function confirmRestore() {
+    if (!pendingBackup || restoreConfirmation !== "RESTAURAR") return;
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    downloadJsonBackup(`OrbiCore_antes_da_restauracao_${profileName}_${stamp}.json`);
+    restoreData(pendingBackup.data);
+    setPendingBackup(null);
+    setRestoreConfirmation("");
+    toast.success("Backup restaurado. A cópia dos dados anteriores também foi baixada.");
   }
 
   return (
@@ -313,9 +352,27 @@ export default function ExportPage() {
           buttonLabel="Baixar backup"
           busy={exporting === "json"}
           disabled={exporting !== null}
-          onClick={() => runExport("json", exportJsonBackup)}
+          onClick={() => runExport("json", downloadJsonBackup)}
         />
       </div>
+
+      <Card className="border-border/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base"><RotateCcw className="h-5 w-5 text-orbi-amber" />Restaurar backup</CardTitle>
+          <CardDescription>
+            Selecione um backup JSON do OrbiCore. O arquivo será validado e você verá um resumo antes de qualquer alteração.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <input ref={restoreInputRef} type="file" accept="application/json,.json" className="sr-only" onChange={selectRestoreFile} />
+          <Button variant="outline" className="min-h-11 gap-2" onClick={() => restoreInputRef.current?.click()}>
+            <Upload className="h-4 w-4" />Selecionar backup JSON
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            A restauração substitui os dados da conta somente após sua confirmação. Antes disso, o OrbiCore baixa automaticamente uma cópia do estado atual.
+          </p>
+        </CardContent>
+      </Card>
 
       <Card className="border-border/50">
         <CardHeader>
@@ -333,6 +390,41 @@ export default function ExportPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={Boolean(pendingBackup)} onOpenChange={(open) => !open && setPendingBackup(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Conferir backup antes de restaurar</DialogTitle>
+          </DialogHeader>
+          {pendingBackup && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-border/60 bg-muted/40 p-3 text-sm">
+                <p className="font-medium break-all">{restoreFileName}</p>
+                <p className="mt-1 text-muted-foreground">Gerado em {new Date(pendingBackup.exportedAt).toLocaleString("pt-BR")}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+                <Count label="Contratos" value={pendingBackup.counts.contracts} />
+                <Count label="Reuniões" value={pendingBackup.counts.meetings} />
+                <Count label="Produtos" value={pendingBackup.counts.products} />
+                <Count label="Vendas" value={pendingBackup.counts.sales} />
+                <Count label="Estoque" value={pendingBackup.counts.stockMovements} />
+                <Count label="Folhas" value={pendingBackup.counts.payroll} />
+              </div>
+              <div className="rounded-lg border border-orbi-amber/30 bg-orbi-amber/10 p-3 text-sm">
+                Os dados atuais serão substituídos. Uma cópia de segurança do estado atual será baixada antes da restauração. Imagens armazenadas no Supabase não fazem parte do arquivo JSON.
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="restore-confirmation">Digite RESTAURAR para confirmar</Label>
+                <Input id="restore-confirmation" value={restoreConfirmation} onChange={(event) => setRestoreConfirmation(event.target.value.toUpperCase())} autoComplete="off" />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingBackup(null)}>Cancelar</Button>
+            <Button variant="destructive" disabled={restoreConfirmation !== "RESTAURAR"} onClick={confirmRestore}>Criar cópia e restaurar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
