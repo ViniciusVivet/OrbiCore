@@ -147,6 +147,9 @@ export interface CommissionSale {
   id: string;
   description: string;
   saleAmount: number;
+  // Ausente em registros antigos = valor total, preservando o cálculo já salvo.
+  amountType?: "monthly" | "total";
+  durationMonths?: number;
   rate: number | null; // Percentual em pontos: 5 significa 5%. Null = não informado.
   rateSource?: "manual" | "auto";
 }

@@ -19,7 +19,7 @@ import { PageLoading } from "@/components/page-loading";
 import { CommissionRulesEditor, CommissionSalesEditor } from "@/components/commission-sales-editor";
 import { useConfirm } from "@/components/confirm-provider";
 import { payrollFormError, payrollFormFromMonth, payrollPayload } from "@/lib/payroll-form";
-import { commissionRateForAmount, commissionRulesError } from "@/lib/commission";
+import { commissionBaseAmount, commissionRateForAmount, commissionRulesError } from "@/lib/commission";
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 
@@ -94,7 +94,7 @@ function PayrollEditor({ year, selectedMonth, existing, onPeriodChange }: {
     setForm((current) => ({
       ...current,
       commissionSales: current.commissionSales.map((sale) => sale.rateSource === "auto"
-        ? { ...sale, rate: commissionRateForAmount(rules, sale.saleAmount) }
+        ? { ...sale, rate: commissionRateForAmount(rules, commissionBaseAmount(sale)) }
         : sale),
     }));
     toast.success("Faixas salvas. Se houver lançamentos neste mês, confira o percentual e salve o mês para aplicar.");

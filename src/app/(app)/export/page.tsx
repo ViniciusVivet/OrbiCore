@@ -24,7 +24,7 @@ import { createBackup, OrbiCoreBackup, validateBackup } from "@/lib/backup";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { availableYears, currentCalendarYear } from "@/lib/years";
 import { PageLoading } from "@/components/page-loading";
-import { payrollCommission, saleCommission } from "@/lib/commission";
+import { commissionBaseAmount, payrollCommission, saleCommission } from "@/lib/commission";
 
 type ExportKind = "excel" | "csv" | "json";
 
@@ -91,7 +91,7 @@ export default function ExportPage() {
       "Receita Total", "Onboarding", "Upsell/Cross-sell", "MRR Vendido", "MRR Previsto",
       "Receita Esperada", "Custo Unit", "Custo Unitário", "Preço Venda", "Lucro Unit",
       "Custo Total", "Receita", "Lucro", "Salário Base", "Home Office", "Comissão",
-      "DSR", "Total Bruto", "INSS", "Base IRRF", "IRRF", "Outros Desc.", "Total Líquido", "Valor da Venda", "Comissão Bruta", "A partir de (R$)",
+      "DSR", "Total Bruto", "INSS", "Base IRRF", "IRRF", "Outros Desc.", "Total Líquido", "Valor Informado", "Valor Total do Contrato", "Comissão Bruta", "A partir de (R$)",
     ]);
     const percentHeaders = new Set(["Probabilidade", "Margem", "Conversão", "Percentual de Comissão", "Comissão (%)"]);
 
@@ -249,7 +249,10 @@ export default function ExportPage() {
         "Ano": payroll.year,
         "Mês": monthName(payroll.month),
         "Cliente ou Contrato": sale.description,
-        "Valor da Venda": sale.saleAmount,
+        "Forma do Valor": sale.amountType === "monthly" ? "Mensal" : "Total",
+        "Valor Informado": sale.saleAmount,
+        "Duração (meses)": sale.amountType === "monthly" ? (sale.durationMonths ?? 12) : "—",
+        "Valor Total do Contrato": commissionBaseAmount(sale),
         "Percentual de Comissão": sale.rate === null ? "Não informado" : sale.rate / 100,
         "Comissão Bruta": sale.rate === null ? "Não calculada" : saleCommission(sale),
         "Origem do Percentual": sale.rateSource === "auto" ? "Faixa automática aplicada no lançamento" : "Informado no lançamento",

@@ -4,9 +4,14 @@ export function roundMoney(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
-export function saleCommission(sale: Pick<CommissionSale, "saleAmount" | "rate">): number {
+export function commissionBaseAmount(sale: Pick<CommissionSale, "saleAmount" | "amountType" | "durationMonths">): number {
+  const months = sale.amountType === "monthly" ? (sale.durationMonths ?? 12) : 1;
+  return roundMoney(sale.saleAmount * months);
+}
+
+export function saleCommission(sale: Pick<CommissionSale, "saleAmount" | "amountType" | "durationMonths" | "rate">): number {
   if (sale.rate === null) return NaN;
-  return roundMoney(sale.saleAmount * sale.rate / 100);
+  return roundMoney(commissionBaseAmount(sale) * sale.rate / 100);
 }
 
 export function commissionTotal(sales: CommissionSale[]): number {

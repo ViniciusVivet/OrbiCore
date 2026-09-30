@@ -35,10 +35,13 @@ export function payrollFormError(form: PayrollForm): string | null {
     return "Informe dias úteis entre 1 e 31 e domingos/feriados entre 0 e 31, sem frações.";
   }
   if (form.commissionMode === "sales") {
-    if (form.commissionSales.length === 0) return "Adicione uma venda ou use o modo de comissão manual.";
+    if (form.commissionSales.length === 0) return "Adicione um contrato ou use o modo de comissão manual.";
     for (const [index, sale] of form.commissionSales.entries()) {
-      if (!Number.isFinite(sale.saleAmount) || sale.saleAmount <= 0) return `Venda ${index + 1}: informe um valor maior que zero.`;
-      if (sale.rate === null || !Number.isFinite(sale.rate) || sale.rate < 0 || sale.rate > 100) return `Venda ${index + 1}: informe uma comissão entre 0% e 100%.`;
+      if (!Number.isFinite(sale.saleAmount) || sale.saleAmount <= 0) return `Contrato ${index + 1}: informe um valor maior que zero.`;
+      if (sale.amountType === "monthly" && (!Number.isInteger(sale.durationMonths) || (sale.durationMonths ?? 0) < 1 || (sale.durationMonths ?? 0) > 120)) {
+        return `Contrato ${index + 1}: informe uma duração entre 1 e 120 meses, sem frações.`;
+      }
+      if (sale.rate === null || !Number.isFinite(sale.rate) || sale.rate < 0 || sale.rate > 100) return `Contrato ${index + 1}: informe uma comissão entre 0% e 100%.`;
     }
   }
   if (!Number.isFinite(payrollCommission(form))) return "O total da comissão excede o limite de cálculo.";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { commissionRateForAmount, commissionRulesError, commissionTotal, payrollCommission, roundMoney, saleCommission } from "./commission";
+import { commissionBaseAmount, commissionRateForAmount, commissionRulesError, commissionTotal, payrollCommission, roundMoney, saleCommission } from "./commission";
 import { calcCommissionImpact, calcPayroll } from "./calculations";
 import { payrollFormError, payrollFormFromMonth, payrollPayload } from "./payroll-form";
 import { normalizeData, upsertPayrollInData } from "./data";
@@ -40,6 +40,15 @@ describe("comissão sobre vendas", () => {
     expect(saleCommission(sale(7000, 0))).toBe(0);
     expect(saleCommission(sale(7000, 100))).toBe(7000);
     expect(saleCommission(sale(1000, null))).toBeNaN();
+  });
+
+  it("calcula a comissão sobre valor mensal x duração e preserva lançamentos antigos como total", () => {
+    const monthly: CommissionSale = { ...sale(7000, 5), amountType: "monthly", durationMonths: 12 };
+    expect(commissionBaseAmount(monthly)).toBe(84000);
+    expect(saleCommission(monthly)).toBe(4200);
+    expect(commissionRateForAmount([{ id: "high", minSaleAmount: 80000, rate: 7 }], commissionBaseAmount(monthly))).toBe(7);
+    expect(commissionBaseAmount(sale(7000, 5))).toBe(7000);
+    expect(saleCommission(sale(7000, 5))).toBe(350);
   });
 
   it("soma centavos arredondados por venda, sem multiplicar novamente pelo número de meses", () => {
@@ -101,7 +110,11 @@ describe("comissão sobre vendas", () => {
     for (const amount of [-1, 0, NaN, Infinity]) {
       expect(payrollFormError({ ...form, commissionSales: [sale(amount)] })).toMatch(/valor maior/);
     }
-    expect(payrollFormError({ ...form, commissionSales: [] })).toMatch(/Adicione uma venda/);
+    expect(payrollFormError({ ...form, commissionSales: [] })).toMatch(/Adicione um contrato/);
+    for (const durationMonths of [0, 121, 1.5, NaN]) {
+      expect(payrollFormError({ ...form, commissionSales: [{ ...sale(), amountType: "monthly", durationMonths }] })).toMatch(/duração entre/);
+    }
+    expect(payrollFormError({ ...form, commissionSales: [{ ...sale(), amountType: "monthly", durationMonths: 12 }] })).toBeNull();
     expect(payrollFormError({ ...form, workDays: 0 })).toMatch(/dias úteis/);
     expect(payrollFormError({ ...form, workDays: 22.5 })).toMatch(/dias úteis/);
     expect(payrollFormError({ ...form, sundaysHolidays: -1 })).toMatch(/dias úteis/);
