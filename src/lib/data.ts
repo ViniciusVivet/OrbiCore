@@ -1,4 +1,5 @@
-import { AppData, OrgProfile } from "./types";
+import { AppData, OrgProfile, PayrollMonth } from "./types";
+import { payrollCommission } from "./commission";
 
 export const DEFAULT_PROFILE: OrgProfile = {
   name: "",
@@ -81,5 +82,21 @@ export function removeProductWithReferences(data: AppData, productId: string): A
     stockMovements: data.stockMovements.filter(
       (movement) => movement.productId !== productId
     ),
+  };
+}
+
+/** Atualiza apenas a competência escolhida, sem reprocessar folhas anteriores. */
+export function upsertPayrollInData(
+  data: AppData,
+  payroll: Omit<PayrollMonth, "id" | "createdAt">,
+  identity: Pick<PayrollMonth, "id" | "createdAt">,
+): AppData {
+  const next = { ...payroll, commission: payrollCommission(payroll) };
+  const existing = data.payroll.find((item) => item.month === payroll.month && item.year === payroll.year);
+  return {
+    ...data,
+    payroll: existing
+      ? data.payroll.map((item) => item.id === existing.id ? { ...item, ...next } : item)
+      : [...data.payroll, { ...next, ...identity }],
   };
 }

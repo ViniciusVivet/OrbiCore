@@ -1,4 +1,5 @@
 import { Contract, PayrollMonth, Meeting, Product, Sale, StockMovement } from "./types";
+import { payrollCommission, roundMoney } from "./commission";
 
 /** Interpreta datas de negócio sem deslocamento de dia por fuso horário. */
 export function parseLocalDate(value: string): Date {
@@ -393,11 +394,12 @@ export function calcIRRF(irrfBase: number): number {
 
 /** Calculo completo do mes */
 export function calcPayroll(p: PayrollMonth) {
-  const dsr = calcDSR(p.commission, p.workDays, p.sundaysHolidays);
-  const grossTotal = Math.round((p.baseSalary + p.homeOffice + p.commission + dsr) * 100) / 100;
+  const commission = payrollCommission(p);
+  const dsr = calcDSR(commission, p.workDays, p.sundaysHolidays);
+  const grossTotal = Math.round((p.baseSalary + p.homeOffice + commission + dsr) * 100) / 100;
 
   // Base tributavel = salario + comissao + DSR (SEM home office)
-  const taxableBase = p.baseSalary + p.commission + dsr;
+  const taxableBase = p.baseSalary + commission + dsr;
   const inss = calcINSS(taxableBase);
 
   // Base IRRF = base tributavel - INSS
@@ -407,4 +409,18 @@ export function calcPayroll(p: PayrollMonth) {
   const netTotal = Math.round((grossTotal - inss - irrf - p.otherDeductions) * 100) / 100;
 
   return { dsr, grossTotal, taxableBase, inss, irrfBase, irrf, netTotal };
+}
+
+/** Impacto incremental: não atribui à comissão os impostos do salário fixo. */
+export function calcCommissionImpact(p: PayrollMonth) {
+  const withCommission = calcPayroll(p);
+  const withoutCommission = calcPayroll({ ...p, commissionMode: "manual", commission: 0 });
+  return {
+    commission: payrollCommission(p),
+    dsr: withCommission.dsr,
+    gross: roundMoney(withCommission.grossTotal - withoutCommission.grossTotal),
+    inss: roundMoney(withCommission.inss - withoutCommission.inss),
+    irrf: roundMoney(withCommission.irrf - withoutCommission.irrf),
+    net: roundMoney(withCommission.netTotal - withoutCommission.netTotal),
+  };
 }

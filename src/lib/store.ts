@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { AppData, Contract, Meeting, Product, Sale, StockMovement, PayrollMonth, OrgProfile, SyncStatus } from "./types";
 import { SEED_DATA } from "./seed-data";
-import { createEmptyData, normalizeData, removeProductWithReferences } from "./data";
+import { createEmptyData, normalizeData, removeProductWithReferences, upsertPayrollInData } from "./data";
 import { createClient } from "./supabase/client";
 
 const LEGACY_STORAGE_KEY = "orbicore_data";
@@ -355,21 +355,7 @@ export function useStore() {
 
   // --- Payroll ---
   const upsertPayroll = useCallback((p: Omit<PayrollMonth, "id" | "createdAt">) => {
-    update((d) => {
-      const existing = d.payroll.find((x) => x.month === p.month && x.year === p.year);
-      if (existing) {
-        return {
-          ...d,
-          payroll: d.payroll.map((x) =>
-            x.id === existing.id ? { ...x, ...p } : x
-          ),
-        };
-      }
-      return {
-        ...d,
-        payroll: [...d.payroll, { ...p, id: generateId(), createdAt: new Date().toISOString() }],
-      };
-    });
+    update((d) => upsertPayrollInData(d, p, { id: generateId(), createdAt: new Date().toISOString() }));
   }, [update]);
 
   // --- Reset ---

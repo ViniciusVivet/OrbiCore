@@ -24,6 +24,7 @@ import { createBackup, OrbiCoreBackup, validateBackup } from "@/lib/backup";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { availableYears, currentCalendarYear } from "@/lib/years";
 import { PageLoading } from "@/components/page-loading";
+import { payrollCommission, saleCommission } from "@/lib/commission";
 
 type ExportKind = "excel" | "csv" | "json";
 
@@ -90,9 +91,9 @@ export default function ExportPage() {
       "Receita Total", "Onboarding", "Upsell/Cross-sell", "MRR Vendido", "MRR Previsto",
       "Receita Esperada", "Custo Unit", "Custo Unitário", "Preço Venda", "Lucro Unit",
       "Custo Total", "Receita", "Lucro", "Salário Base", "Home Office", "Comissão",
-      "DSR", "Total Bruto", "INSS", "Base IRRF", "IRRF", "Outros Desc.", "Total Líquido",
+      "DSR", "Total Bruto", "INSS", "Base IRRF", "IRRF", "Outros Desc.", "Total Líquido", "Valor da Venda", "Comissão Bruta", "A partir de (R$)",
     ]);
-    const percentHeaders = new Set(["Probabilidade", "Margem", "Conversão"]);
+    const percentHeaders = new Set(["Probabilidade", "Margem", "Conversão", "Percentual de Comissão", "Comissão (%)"]);
 
     const addSheet = (name: string, rows: Record<string, unknown>[]) => {
       if (rows.length === 0) return;
@@ -119,7 +120,7 @@ export default function ExportPage() {
         row.eachCell((cell, columnNumber) => {
           const header = headers[columnNumber - 1];
           if (moneyHeaders.has(header) && typeof cell.value === "number") cell.numFmt = '"R$" #,##0.00';
-          if (percentHeaders.has(header) && typeof cell.value === "number") cell.numFmt = "0.0%";
+          if (percentHeaders.has(header) && typeof cell.value === "number") cell.numFmt = header === "Percentual de Comissão" || header === "Comissão (%)" ? "0.00%" : "0.0%";
           cell.alignment = { ...cell.alignment, vertical: "middle" };
         });
       });
@@ -227,7 +228,8 @@ export default function ExportPage() {
         "Mês": monthName(payroll.month),
         "Salário Base": payroll.baseSalary,
         "Home Office": payroll.homeOffice,
-        "Comissão": payroll.commission,
+        "Modo de Comissão": payroll.commissionMode === "sales" ? "Por vendas" : "Manual",
+        "Comissão": payrollCommission(payroll),
         "Dias Úteis": payroll.workDays,
         "Dom/Feriados": payroll.sundaysHolidays,
         "DSR": calculation.dsr,
@@ -237,8 +239,28 @@ export default function ExportPage() {
         "IRRF": calculation.irrf,
         "Outros Desc.": payroll.otherDeductions,
         "Total Líquido": calculation.netTotal,
+        "Modelo de Descontos": "Planilha original - referência 2026; simulação, valide com DP",
       };
     }));
+
+    addSheet("Comissões por Venda", [...data.payroll]
+      .sort((a, b) => a.year - b.year || a.month - b.month)
+      .flatMap((payroll) => (payroll.commissionSales ?? []).map((sale) => ({
+        "Ano": payroll.year,
+        "Mês": monthName(payroll.month),
+        "Cliente ou Contrato": sale.description,
+        "Valor da Venda": sale.saleAmount,
+        "Percentual de Comissão": sale.rate === null ? "Não informado" : sale.rate / 100,
+        "Comissão Bruta": sale.rate === null ? "Não calculada" : saleCommission(sale),
+        "Origem do Percentual": sale.rateSource === "auto" ? "Faixa automática aplicada no lançamento" : "Informado no lançamento",
+        "Uso na Folha": payroll.commissionMode === "sales" ? "Incluída na comissão do mês" : "Guardada, não incluída (modo manual)",
+      }))));
+
+    addSheet("Faixas de Comissão", (data.profile.commissionRules ?? []).map((rule) => ({
+      "A partir de (R$)": rule.minSaleAmount,
+      "Comissão (%)": rule.rate === null ? "Não informada" : rule.rate / 100,
+      "Aplicação": "Usada em novos lançamentos; meses já salvos guardam sua taxa",
+    })));
 
     addSheet("Metas", data.goalPlans.flatMap((plan) => plan.monthlyRevenueGoals.map((revenue, index) => ({
       "Ano": plan.year,
@@ -342,7 +364,7 @@ export default function ExportPage() {
         <ExportCard
           icon={<FileSpreadsheet className="h-5 w-5 text-orbi-cyan" />}
           title="Excel completo"
-          description="Planilha formatada, com filtros, valores em reais e abas de contratos, reuniões, produtos, vendas, estoque, folha e metas."
+          description="Planilha formatada, com filtros e abas de contratos, vendas, estoque, folha, comissões por venda e metas."
           buttonLabel="Baixar Excel"
           busy={exporting === "excel"}
           disabled={!hasData || exporting !== null}

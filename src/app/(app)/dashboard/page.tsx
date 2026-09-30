@@ -34,6 +34,7 @@ import { chartTokens, chartSeries, chartTooltipStyle, chartTooltipLabelStyle } f
 import { backgroundImageUrl, backgroundPathForView } from "@/lib/background-image";
 import { availableYears } from "@/lib/years";
 import { PageLoading } from "@/components/page-loading";
+import { payrollCommission } from "@/lib/commission";
 
 const COLORS = {
   cyan: chartTokens.cyan,
@@ -149,7 +150,7 @@ export default function DashboardPage() {
 
   // --- Commission ---
   const currentPayroll = payroll.find((p) => p.month === selectedMonth && p.year === year);
-  const commissionThisMonth = currentPayroll?.commission ?? 0;
+  const commissionThisMonth = currentPayroll ? payrollCommission(currentPayroll) : 0;
 
   // Top client concentration risk
   const topClient = concentration[0];

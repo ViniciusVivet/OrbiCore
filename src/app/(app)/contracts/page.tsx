@@ -24,6 +24,7 @@ import { CurrencyInput } from "@/components/currency-input";
 import { currentCalendarYear } from "@/lib/years";
 import { useConfirm } from "@/components/confirm-provider";
 import { PageLoading } from "@/components/page-loading";
+import Link from "next/link";
 
 const COLORS = {
   cyan: chartTokens.cyan,
@@ -137,7 +138,7 @@ export default function ContractsPage() {
       toast.error("Confira a data da venda e a duração do contrato.");
       return;
     }
-    let durationMonths = form.durationMonths;
+    const durationMonths = form.durationMonths;
     let feeHistory = [...(form.feeHistory ?? [])];
     const existingContract = editingId
       ? data.contracts.find((contract) => contract.id === editingId)
@@ -266,10 +267,13 @@ export default function ContractsPage() {
           </div>
           <p className="text-muted-foreground">Gerencie seus contratos e receita recorrente</p>
         </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          {data.profile.enabledModules.includes("payroll") && <Link href="/payroll" className="inline-flex min-h-9 items-center justify-center rounded-lg border border-border px-3 text-sm font-medium hover:bg-accent">Calcular comissão</Link>}
         <Button onClick={openNew} className="w-full gap-2 sm:w-auto">
           <Plus className="h-4 w-4" />
           Novo Contrato
         </Button>
+        </div>
       </div>
 
       {/* Summary cards */}

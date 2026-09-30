@@ -143,6 +143,20 @@ export interface DashboardBlockPreference {
 }
 
 // --- Calculo Mensal ---
+export interface CommissionSale {
+  id: string;
+  description: string;
+  saleAmount: number;
+  rate: number | null; // Percentual em pontos: 5 significa 5%. Null = não informado.
+  rateSource?: "manual" | "auto";
+}
+
+export interface CommissionRule {
+  id: string;
+  minSaleAmount: number;
+  rate: number | null; // Percentual em pontos; null enquanto não informado.
+}
+
 export interface PayrollMonth {
   id: string;
   month: number; // 1-12
@@ -150,6 +164,10 @@ export interface PayrollMonth {
   baseSalary: number;
   homeOffice: number;
   commission: number;
+  // Opcionais: folhas antigas continuam usando exatamente a comissão informada.
+  commissionMode?: "manual" | "sales";
+  commissionSales?: CommissionSale[];
+  manualCommission?: number;
   workDays: number;
   sundaysHolidays: number;
   otherDeductions: number;
@@ -201,6 +219,7 @@ export interface OrgProfile {
   closeRateTarget?: number;
   newContractsMonthly?: number;
   salesRevenueMonthly?: number;
+  commissionRules?: CommissionRule[];
   dashboardWidgets?: DashboardWidgetKey[];
   dashboardSections?: DashboardSectionKey[];
   dashboardLayout?: DashboardBlockPreference[];

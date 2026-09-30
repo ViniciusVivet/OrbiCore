@@ -21,6 +21,16 @@ Desenvolvido pela **Orbitamos**.
 | **Metas** | Definicao de metas anuais com acompanhamento mensal e trimestral |
 | **Exportacao** | Export completo dos dados para Excel (.xlsx) |
 
+### Comissões por venda
+
+Em **Cálculo de Remuneração**, escolha o mês/ano e o modo **Calcular pelas vendas e percentuais**. É possível configurar faixas, como "a partir de R$ 0, 5%" e "a partir de R$ 10.000, 7%". Ao informar o valor da venda, o sistema aplica a faixa vigente; uma taxa manual no lançamento substitui a sugestão quando necessário. Como a planilha original não traz uma tabela de comissão, nenhuma taxa vem pré-cadastrada. A comissão é arredondada por lançamento e somada no mês.
+
+O resultado mostra a comissão bruta, DSR, descontos adicionais atribuíveis à comissão e o líquido estimado acrescentado à folha. O total mensal inclui salário, home office e outros descontos, sem descontá-los duas vezes. O cálculo preserva as fórmulas da planilha original, com referência de 2026, inclusive sua redução simplificada de IRRF; não representa uma atualização fiscal nem substitui validação do contador/DP. Selecionar outro ano não atualiza as tabelas tributárias.
+
+Os lançamentos de comissão são independentes dos contratos, das vendas da loja e do estoque. Nada é gravado ao abrir ou simular: use **Salvar** para atualizar somente a competência selecionada. Folhas antigas continuam manuais, com os mesmos valores e fórmulas. Alternar entre os modos preserva tanto o valor manual quanto os lançamentos, mas somente o modo escolhido entra na folha.
+
+Os novos campos são opcionais no JSON existente: não há migração SQL, limpeza ou recálculo em lote. As faixas são salvas no perfil para novos lançamentos. O percentual efetivamente aplicado fica registrado em cada venda, de modo que editar faixas no futuro não reescreve comissões de meses anteriores. O backup JSON preserva faixas e lançamentos; o Excel inclui as abas **Comissões por Venda** e **Faixas de Comissão**, com a origem da taxa. Os testes em `src/lib/commission.test.ts` cobrem cálculos, limites das faixas, compatibilidade com a folha original, isolamento entre competências e round-trip do backup.
+
 ## Stack
 
 - **Framework:** Next.js 15 (App Router, Server Components)
