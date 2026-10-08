@@ -17,9 +17,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { availableYears, currentCalendarYear } from "@/lib/years";
 import { PageLoading } from "@/components/page-loading";
 import { CommissionRulesEditor, CommissionSalesEditor } from "@/components/commission-sales-editor";
+import { CommercialCommissionCalculator } from "@/components/commercial-commission-calculator";
 import { useConfirm } from "@/components/confirm-provider";
 import { payrollFormError, payrollFormFromMonth, payrollPayload } from "@/lib/payroll-form";
 import { commissionBaseAmount, commissionRateForAmount, commissionRulesError } from "@/lib/commission";
+import { commercialSettings, commercialSettingsError } from "@/lib/commercial-commission";
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 
@@ -46,8 +48,10 @@ function PayrollEditor({ year, selectedMonth, existing, onPeriodChange }: {
   const [form, setForm] = useState(() => payrollFormFromMonth(existing));
   const [savedForm, setSavedForm] = useState(() => JSON.stringify(payrollFormFromMonth(existing)));
   const [rulesDraft, setRulesDraft] = useState(() => [...(data.profile.commissionRules ?? [])]);
+  const [commercialDraft, setCommercialDraft] = useState(() => commercialSettings(data.profile.commercialCommissionSettings));
   const rulesDirty = JSON.stringify(rulesDraft) !== JSON.stringify(data.profile.commissionRules ?? []);
-  const dirty = JSON.stringify(form) !== savedForm || rulesDirty;
+  const commercialSettingsDirty = JSON.stringify(commercialDraft) !== JSON.stringify(commercialSettings(data.profile.commercialCommissionSettings));
+  const dirty = JSON.stringify(form) !== savedForm || rulesDirty || commercialSettingsDirty;
   const formError = payrollFormError(form);
 
   useEffect(() => {
@@ -65,7 +69,7 @@ function PayrollEditor({ year, selectedMonth, existing, onPeriodChange }: {
 
   function handleSave() {
     if (rulesDirty) {
-      toast.error("Salve ou desfaça as alterações nas faixas antes de salvar o mês.");
+      toast.error("Salve ou desfaça as alterações nas faixas por valor do contrato antes de salvar o mês.");
       return;
     }
     if (formError) {
@@ -100,6 +104,30 @@ function PayrollEditor({ year, selectedMonth, existing, onPeriodChange }: {
     toast.success("Faixas salvas. Se houver lançamentos neste mês, confira o percentual e salve o mês para aplicar.");
   }
 
+  function handleSaveCommercialSettings() {
+    const error = commercialSettingsError(commercialDraft);
+    if (error) { toast.error(error); return; }
+    if (syncStatus === "conflict" || syncStatus === "loading") {
+      toast.error("Resolva a sincronização antes de salvar as configurações.");
+      return;
+    }
+    updateProfile({ commercialCommissionSettings: commercialDraft });
+    toast.success("Configurações atualizadas neste dispositivo. Confira a sincronização no topo da tela.");
+  }
+
+  async function handleApplyCommercialCommission(commission: number) {
+    if (form.commission > 0 || (form.commissionMode === "sales" && form.commissionSales.length > 0)) {
+      if (!await confirm({
+        title: "Preencher comissão na folha?",
+        description: "A comissão manual desta simulação será substituída e o modo mudará para manual. Os lançamentos por contrato continuam guardados, mas não serão somados. Nada será gravado até você salvar o mês.",
+        confirmLabel: "Preencher folha",
+      })) return;
+    }
+    setForm((current) => ({ ...current, commissionMode: "manual", commission }));
+    document.getElementById("payroll-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    toast.success("Comissão preenchida na folha. Confira os descontos e salve o mês se quiser guardar.");
+  }
+
   const payrollData: PayrollMonth = {
     id: "",
     createdAt: "",
@@ -132,8 +160,8 @@ function PayrollEditor({ year, selectedMonth, existing, onPeriodChange }: {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Cálculo Mensal</h2>
-          <p className="text-muted-foreground">Simule salário, comissão, DSR e descontos — {year}</p>
+          <h2 className="text-2xl font-bold tracking-tight">Contratos e remuneração</h2>
+          <p className="text-muted-foreground">Simule a comissão comercial e a folha de {year}</p>
         </div>
         <Select value={String(year)} onValueChange={(value) => { if (value) void changePeriod(selectedMonth, Number(value)); }}>
           <SelectTrigger className="w-28" aria-label="Ano do cálculo"><SelectValue /></SelectTrigger>
@@ -166,15 +194,21 @@ function PayrollEditor({ year, selectedMonth, existing, onPeriodChange }: {
         })}
       </div>
 
+      <CommercialCommissionCalculator settings={commercialDraft} dirty={commercialSettingsDirty}
+        onSettingsChange={setCommercialDraft} onSaveSettings={handleSaveCommercialSettings}
+        onDiscardSettings={() => setCommercialDraft(commercialSettings(data.profile.commercialCommissionSettings))}
+        onUseInPayroll={(commission) => void handleApplyCommercialCommission(commission)}
+        savingDisabled={syncStatus === "conflict" || syncStatus === "loading"} />
+
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Input form */}
-        <Card className="border-border/50">
+        <Card className="border-border/50" id="payroll-form">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calculator className="h-5 w-5 text-orbi-cyan" />
               {monthName(selectedMonth)} {year}
             </CardTitle>
-            <CardDescription>Preencha os valores e salve apenas este mês. Home Office não entra na base de INSS/IRRF neste modelo.</CardDescription>
+            <CardDescription>Folha pessoal de {monthName(selectedMonth)}. Preencha os valores e salve apenas este mês. Home Office não entra na base de INSS/IRRF neste modelo.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -188,25 +222,26 @@ function PayrollEditor({ year, selectedMonth, existing, onPeriodChange }: {
               </div>
             </div>
             <div className="space-y-3 rounded-lg bg-muted/40 p-3">
-              <Label htmlFor="commission-mode">Como calcular a comissão?</Label>
+              <Label htmlFor="commission-mode">Como preencher a comissão da folha?</Label>
               <Select value={form.commissionMode} onValueChange={(value) => {
                 if (value === "manual" || value === "sales") setForm({ ...form, commissionMode: value });
               }}>
-                <SelectTrigger id="commission-mode" className="w-full"><SelectValue>{form.commissionMode === "manual" ? "Informar comissão pronta" : "Calcular pelas vendas e percentuais"}</SelectValue></SelectTrigger>
+                <SelectTrigger id="commission-mode" className="w-full"><SelectValue>{form.commissionMode === "manual" ? "Informar comissão pronta" : "Calcular por contratos e percentuais próprios"}</SelectValue></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="manual">Informar comissão pronta</SelectItem>
-                  <SelectItem value="sales">Calcular pelas vendas e percentuais</SelectItem>
+                  <SelectItem value="sales">Calcular por contratos e percentuais próprios</SelectItem>
                 </SelectContent>
               </Select>
-              <CommissionRulesEditor rules={rulesDraft} onChange={setRulesDraft} onSave={handleSaveRules} dirty={rulesDirty} />
               {form.commissionMode === "manual" ? (
                 <div className="space-y-2">
                   <Label htmlFor="manual-commission">Comissão bruta (R$)</Label>
                   <CurrencyInput id="manual-commission" value={form.commission} onValueChange={(commission) => setForm({ ...form, commission })} hint={false} />
-                  <p className="text-xs text-muted-foreground">O valor manual e os lançamentos são preservados ao alternar. Apenas o modo selecionado entra no cálculo.</p>
+                  <p className="text-xs text-muted-foreground">Você pode informar o valor ou usar “Preencher comissão na folha” no simulador acima. A folha calcula DSR, INSS e IRRF pessoais. Apenas o modo selecionado entra no cálculo.</p>
                 </div>
               ) : (
                 <>
+                  <p className="text-xs text-muted-foreground">Este modo usa percentuais próprios por valor do contrato. As faixas por atingimento da meta ficam no simulador acima.</p>
+                  <CommissionRulesEditor rules={rulesDraft} onChange={setRulesDraft} onSave={handleSaveRules} dirty={rulesDirty} />
                   {form.commission > 0 && <p className="text-xs text-muted-foreground">Comissão manual preservada: {currency(form.commission)}. Ela não é somada às vendas.</p>}
                   <CommissionSalesEditor sales={form.commissionSales} rules={data.profile.commissionRules ?? []} onChange={(commissionSales) => setForm({ ...form, commissionSales })} />
                 </>

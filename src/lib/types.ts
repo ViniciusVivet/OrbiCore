@@ -160,6 +160,25 @@ export interface CommissionRule {
   rate: number | null; // Percentual em pontos; null enquanto não informado.
 }
 
+export interface CommercialCommissionSettings {
+  monthlyGoal: number;
+  commissionBasis: "net" | "gross";
+  taxRates: {
+    iss: number;
+    pis: number;
+    cofins: number;
+    irrf: number;
+    csll: number;
+  };
+  attainmentRates: {
+    below60: number;
+    from60: number;
+    from100: number;
+    from120: number;
+    from150: number;
+  };
+}
+
 export interface PayrollMonth {
   id: string;
   month: number; // 1-12
@@ -223,6 +242,7 @@ export interface OrgProfile {
   newContractsMonthly?: number;
   salesRevenueMonthly?: number;
   commissionRules?: CommissionRule[];
+  commercialCommissionSettings?: CommercialCommissionSettings;
   dashboardWidgets?: DashboardWidgetKey[];
   dashboardSections?: DashboardSectionKey[];
   dashboardLayout?: DashboardBlockPreference[];

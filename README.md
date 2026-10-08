@@ -21,9 +21,15 @@ Desenvolvido pela **Orbitamos**.
 | **Metas** | Definicao de metas anuais com acompanhamento mensal e trimestral |
 | **Exportacao** | Export completo dos dados para Excel (.xlsx) |
 
+### Simulador de comissão comercial
+
+Em **Contratos e remuneração**, informe o valor mensal de um contrato. O simulador multiplica pelo prazo desse contrato (12 meses inicialmente, ajustável na própria simulação), mostra o valor bruto, cada tributo informado e o líquido estimado. Em seguida, compara a venda mensal com a meta (R$ 3.900 inicialmente), aplica as faixas de atingimento abaixo de 60%, 60%, 100%, 120% e 150% e calcula a comissão sobre o líquido ou bruto conforme a configuração. É possível somar um valor já vendido no mês ao atingimento; essa soma não aumenta a base de comissão do contrato simulado.
+
+As configurações ficam no perfil e só são gravadas ao clicar em **Salvar configurações**. As taxas iniciais são ISS 5%, PIS 0,65%, COFINS 3%, IRRF da empresa 1,5% e CSLL 1%; são parâmetros editáveis de simulação, não apuração tributária. A Receita Federal indica PIS 0,65% e COFINS 3% nesse conjunto de retenções, embora os nomes aparecessem invertidos no print do pedido. O valor digitado no simulador não cria contrato nem altera dados de vendas. **Preencher comissão na folha abaixo** copia somente a comissão estimada para a folha em edição, que continua exigindo **Salvar** para gravar o mês; a folha aplica separadamente seus cálculos de DSR, INSS e IRRF pessoais. Os novos ajustes são opcionais no perfil JSONB, sem migration ou recálculo dos registros anteriores.
+
 ### Comissões por venda
 
-Em **Cálculo de Remuneração**, escolha o mês/ano e o modo **Calcular pelas vendas e percentuais**. É possível configurar faixas, como "a partir de R$ 0, 5%" e "a partir de R$ 10.000, 7%". Ao informar o valor da venda, o sistema aplica a faixa vigente; uma taxa manual no lançamento substitui a sugestão quando necessário. Como a planilha original não traz uma tabela de comissão, nenhuma taxa vem pré-cadastrada. A comissão é arredondada por lançamento e somada no mês.
+Em **Cálculo de Remuneração**, escolha o mês/ano e o modo **Calcular por contratos e percentuais próprios**. É possível configurar faixas por valor do contrato, como "a partir de R$ 0, 5%" e "a partir de R$ 10.000, 7%". Ao informar o valor do contrato, o sistema aplica a faixa vigente; uma taxa manual no lançamento substitui a sugestão quando necessário. Esse método anterior permanece disponível independentemente do novo simulador por atingimento da meta. Como a planilha original não traz uma tabela de comissão, nenhuma taxa vem pré-cadastrada nesse método. A comissão é arredondada por lançamento e somada no mês.
 
 O resultado mostra a comissão bruta, DSR, descontos adicionais atribuíveis à comissão e o líquido estimado acrescentado à folha. O total mensal inclui salário, home office e outros descontos, sem descontá-los duas vezes. O cálculo preserva as fórmulas da planilha original, com referência de 2026, inclusive sua redução simplificada de IRRF; não representa uma atualização fiscal nem substitui validação do contador/DP. Selecionar outro ano não atualiza as tabelas tributárias.
 

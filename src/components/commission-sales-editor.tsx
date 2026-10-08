@@ -130,7 +130,7 @@ export function CommissionRulesEditor({ rules, onChange, onSave, dirty }: {
 
   return (
     <details className="rounded-lg border border-border/70 p-3 text-sm">
-      <summary className="cursor-pointer font-medium">Configurar faixas automáticas de comissão {rules.length > 0 ? `(${rules.length})` : ""}</summary>
+      <summary className="cursor-pointer font-medium">Faixas por valor do contrato {rules.length > 0 ? `(${rules.length})` : ""}</summary>
       <div className="mt-3 space-y-3">
         <p className="text-xs text-muted-foreground">Defina o percentual a partir do valor total do contrato. Vale a faixa com o maior valor inicial que ainda não ultrapassa esse total. Ex.: a partir de R$ 0 = 5%; a partir de R$ 10.000 = 7%. Os lançamentos já salvos guardam o percentual aplicado na época.</p>
         {rules.map((rule, index) => (
